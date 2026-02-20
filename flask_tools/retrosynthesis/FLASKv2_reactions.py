@@ -23,7 +23,7 @@ except (ImportError, ModuleNotFoundError) as e:
         "Install it with: pip install charge[flask]",
     )
 
-from flask_mcp.utils.server_utils import update_mcp_network, get_hostname
+from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 
 REAGENT_KEYS = ["reactants", "agents", "solvents", "catalysts", "atmospheres"]
 PRODUCT_KEYS = ["products"]

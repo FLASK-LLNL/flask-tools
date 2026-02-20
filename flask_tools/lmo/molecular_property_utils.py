@@ -20,7 +20,7 @@ except (ImportError, ModuleNotFoundError) as e:
         "Install it with: pip install flask-mcp-servers[rdkit]",
     )
 
-from flask_mcp.chemistry.SMILES_utils import get_synthesizability
+from flask_tools.chemistry.SMILES_utils import get_synthesizability
 import sys
 import os
 from typing import Literal, Tuple
@@ -152,7 +152,7 @@ def calculate_property_hf(
     lipo, 2.94
     """
     try:
-        from flask_mcp.lmo.get_chemprop2_preds import predict_with_chemprop
+        from flask_tools.lmo.get_chemprop2_preds import predict_with_chemprop
     except Exception as e:
         logger.warning(
             "Please install the chemprop support packages to use this module."
@@ -209,7 +209,7 @@ def get_molecule_price(smiles):
     0.1056
     """
     try:
-        from flask_mcp.lmo.molecule_pricer import get_chemspace_prices
+        from flask_tools.lmo.molecule_pricer import get_chemspace_prices
     except Exception as e:
         logger.warning(
             "Please install the chemprice support packages to use this module."
@@ -248,7 +248,7 @@ def polymerize_monomer(smiles):
     >>> *CC(*)(C)C(=O)OC
     """
     try:
-        from flask_mcp.chemistry.polymerizer import polymerize_auto
+        from flask_tools.chemistry.polymerizer import polymerize_auto
     except Exception as e:
         logger.warning("Unable to find polymerizer tool. Returning input smiles:")
         return smiles

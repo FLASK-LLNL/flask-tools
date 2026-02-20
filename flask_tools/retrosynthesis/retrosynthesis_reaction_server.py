@@ -6,7 +6,7 @@
 ################################################################################
 
 from mcp.server.fastmcp import FastMCP
-from flask_mcp.chemistry.SMILES_utils import verify_smiles, canonicalize_smiles
+from flask_tools.chemistry.SMILES_utils import verify_smiles, canonicalize_smiles
 from charge.servers.log_progress import log_progress
 import argparse
 import os
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     exp_type = args.exp_type
 
     if exp_type == "template":
-        from flask_mcp.chemistry.SMARTS_reactions import SMARTS_mcp
+        from flask_tools.chemistry.SMARTS_reactions import SMARTS_mcp
 
         SMARTS_mcp.tool()(log_progress)
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         )
     elif exp_type == "template-free":
 
-        from flask_mcp.retrosynthesis.AiZynthTools import (
+        from flask_tools.retrosynthesis.AiZynthTools import (
             is_molecule_synthesizable,
             RetroPlanner,
         )

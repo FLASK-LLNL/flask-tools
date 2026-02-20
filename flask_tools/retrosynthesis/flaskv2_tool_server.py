@@ -9,8 +9,8 @@ import click
 import sys
 from loguru import logger
 
-import flask_mcp.retrosynthesis.FLASKv2_reactions as flask
-from flask_mcp.utils.server_utils import update_mcp_network, get_hostname
+import flask_tools.retrosynthesis.FLASKv2_reactions as flask
+from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 from lc_conductor.tool_registration import register_tool_server
 
 

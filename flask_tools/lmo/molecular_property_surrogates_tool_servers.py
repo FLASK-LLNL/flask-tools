@@ -11,11 +11,11 @@ import sys
 from loguru import logger
 import uvicorn
 
-from flask_mcp.utils.server_utils import update_mcp_network, get_hostname
+from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 from lc_conductor.tool_registration import register_tool_server, get_asgi_app
 from mcp.server.fastmcp import FastMCP
 
-from flask_mcp.lmo.molecular_property_utils import calculate_property_hf
+from flask_tools.lmo.molecular_property_utils import calculate_property_hf
 
 
 @click.command()

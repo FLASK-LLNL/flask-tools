@@ -21,16 +21,16 @@ except (ImportError, ModuleNotFoundError) as e:
 import json
 import os
 from charge.tasks.Task import Task
-from flask_mcp.utils.server_utils import add_server_arguments, update_mcp_network
+from flask_tools.utils.server_utils import add_server_arguments, update_mcp_network
 from mcp.server.fastmcp import FastMCP
 from charge.clients.autogen import AutoGenPool
 from charge.clients.Client import Client
 import asyncio
-from flask_mcp.chemistry import SMILES_utils
-from flask_mcp.lmo.molecular_property_utils import get_density
+from flask_tools.chemistry import SMILES_utils
+from flask_tools.lmo.molecular_property_utils import get_density
 import argparse
 from typing import Optional, Literal, Tuple
-from flask_mcp.lmo.molecular_property_utils import PropertyType
+from flask_tools.lmo.molecular_property_utils import PropertyType
 
 mcp = FastMCP(
     "SMILES Diagnosis and retrieval MCP Server",

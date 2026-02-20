@@ -11,7 +11,7 @@ import sys
 from loguru import logger
 import uvicorn
 
-from flask_mcp.utils.server_utils import update_mcp_network, get_hostname
+from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 from lc_conductor.tool_registration import register_tool_server, get_asgi_app
 
 
@@ -75,7 +75,7 @@ def main(
 
     sys.argv = [sys.argv[0]] + ctx.args + [f"--port={port}", f"--host={host}"]
 
-    import flask_mcp.lmo.molecular_generation_server as LMO_MCP
+    import flask_tools.lmo.molecular_generation_server as LMO_MCP
 
     LMO_MCP.setup_autogen_pool(
         api_key=api_key,

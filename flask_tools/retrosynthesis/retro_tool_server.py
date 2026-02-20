@@ -9,13 +9,13 @@ import click
 from loguru import logger
 import uvicorn
 
-from flask_mcp.retrosynthesis.AiZynthTools import (
+from flask_tools.retrosynthesis.AiZynthTools import (
     is_molecule_synthesizable,
     RetroPlanner,
 )
 
-import flask_mcp.retrosynthesis.retrosynthesis_reaction_server as RETRO_MCP
-from flask_mcp.utils.server_utils import update_mcp_network, get_hostname
+import flask_tools.retrosynthesis.retrosynthesis_reaction_server as RETRO_MCP
+from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 from lc_conductor.tool_registration import register_tool_server, get_asgi_app
 
 
