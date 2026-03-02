@@ -27,7 +27,7 @@ from typing import Literal, Tuple
 
 PropertyType = Literal[
     "density", "hof", "alpha", "cv", "gap", "homo", "lumo", "mu", "r2", "zpve", "lipo",
-    "band_gap"
+    "band_gap", "heat_of_formation", "heat of formation"
 ]
 
 
@@ -181,7 +181,7 @@ def calculate_property_hf(
     conversions = {
         "band_gap": "gap",
         "heat_of_formation": "hof",
-        "heat of formation": "hof,
+        "heat of formation": "hof",
     }
     if property.lower() in conversions:
         property = conversions[property.lower()]
