@@ -26,7 +26,8 @@ import os
 from typing import Literal, Tuple
 
 PropertyType = Literal[
-    "density", "hof", "alpha", "cv", "gap", "homo", "lumo", "mu", "r2", "zpve", "lipo"
+    "density", "hof", "alpha", "cv", "gap", "homo", "lumo", "mu", "r2", "zpve", "lipo",
+    "band_gap"
 ]
 
 
@@ -175,7 +176,16 @@ def calculate_property_hf(
         "r2",
         "zpve",
         "lipo",
+        "band_gap",
     }
+    conversions = {
+        "band_gap": "gap",
+        "heat_of_formation": "hof",
+        "heat of formation": "hof,
+    }
+    if property.lower() in conversions:
+        property = conversions[property.lower()]
+    property = property.lower()
     if property not in valid_properties:
         raise ValueError(
             f"Invalid property '{property}'. Must be one of {valid_properties}."
