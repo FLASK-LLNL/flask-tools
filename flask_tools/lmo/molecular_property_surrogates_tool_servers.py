@@ -9,16 +9,21 @@ import os
 import click
 import sys
 from loguru import logger
-import uvicorn
 
 from flask_tools.utils.server_utils import update_mcp_network, get_hostname
-from lc_conductor.tool_registration import register_tool_server, get_asgi_app
-from mcp.server.fastmcp import FastMCP
+from lc_conductor.tool_registration import register_tool_server
+from fastmcp import FastMCP
 
 from flask_tools.lmo.molecular_property_utils import calculate_property_hf
 
 
 @click.command()
+@click.option(
+    "--transport",
+    type=click.Choice(["stdio", "streamable-http"]),
+    help="MCP transport type",
+    default="streamable-http",
+)
 @click.option("--port", type=int, default=8126, help="Port to run the server on")
 @click.option("--host", type=str, default=None, help="Host to run the server on")
 @click.option(
@@ -30,9 +35,8 @@ from flask_tools.lmo.molecular_property_utils import calculate_property_hf
 @click.option(
     "--copilot-host", type=str, default=None, help="Host to the running copilot backend"
 )
-@click.pass_context
 def main(
-    ctx,
+    transport,
     port,
     host,
     name,
@@ -49,22 +53,17 @@ def main(
             f"{name} could not connect to server for registration -- requires manual registration"
         )
 
-    sys.argv = [sys.argv[0]] + ctx.args + [f"--port={port}", f"--host={host}"]
-
     mcp = FastMCP(
         "Computationally expensive surrogate models for molecular properties MCP Server",
-        sse_path=f"/mol_prop_tools/sse",
-        message_path=f"/mol_prop_tools/messages/",
-        host=host,
-        port=port,
     )
     mcp.tool()(calculate_property_hf)
 
-    asgi_app = get_asgi_app(mcp)
-    if asgi_app:
-        uvicorn.run(asgi_app, host=host or "0.0.0.0", port=port)
-    else:
-        logger.error("Could not access FastMCP ASGI app")
+    mcp.run(
+        transport=transport,
+        host=host,
+        port=port,
+        path=f"/mol_prop_tools/mcp",
+    )
 
 
 if __name__ == "__main__":

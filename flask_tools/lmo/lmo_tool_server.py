@@ -9,13 +9,20 @@ import os
 import click
 import sys
 from loguru import logger
-import uvicorn
+from fastmcp import FastMCP
 
+from flask_tools.chemistry import smiles_utils
 from flask_tools.utils.server_utils import update_mcp_network, get_hostname
-from lc_conductor.tool_registration import register_tool_server, get_asgi_app
+from lc_conductor.tool_registration import register_tool_server
 
 
 @click.command()
+@click.option(
+    "--transport",
+    type=click.Choice(["stdio", "streamable-http"]),
+    help="MCP transport type",
+    default="streamable-http",
+)
 @click.option("--port", type=int, default=8124, help="Port to run the server on")
 @click.option("--host", type=str, default=None, help="Host to run the server on")
 @click.option("--name", type=str, default="lmo_tools", help="Name of the MCP server")
@@ -49,9 +56,8 @@ from lc_conductor.tool_registration import register_tool_server, get_asgi_app
     default="known_molecules.json",
     help="Path to known molecules JSON",
 )
-@click.pass_context
 def main(
-    ctx,
+    transport: str,
     port,
     host,
     name,
@@ -73,7 +79,9 @@ def main(
             f"{name} could not connect to server for registration -- requires manual registration"
         )
 
-    sys.argv = [sys.argv[0]] + ctx.args + [f"--port={port}", f"--host={host}"]
+    mcp = FastMCP(
+        "SMILES Diagnosis and retrieval MCP Server",
+    )
 
     import flask_tools.lmo.molecular_generation_server as LMO_MCP
 
@@ -94,13 +102,24 @@ def main(
 
     LMO_MCP.JSON_FILE_PATH = json_file
 
-    mcp = LMO_MCP.mcp
+    mcp.tool()(LMO_MCP.diagnose_smiles)
+    mcp.tool()(LMO_MCP.is_already_known)
+    mcp.tool()(LMO_MCP.calculate_property)
 
-    asgi_app = get_asgi_app(mcp)
-    if asgi_app:
-        uvicorn.run(asgi_app, host=host or "0.0.0.0", port=port, factory=True)
-    else:
-        logger.error("Could not access FastMCP ASGI app")
+    # Add the SMILES utility functions as MCP tools
+    mcp.tool()(smiles_utils.canonicalize_smiles)
+    mcp.tool()(smiles_utils.verify_smiles)
+
+    logger.info(f"Using model: {model} on backend: {backend}")
+    logger.info(f"Using known molecules database at: {LMO_MCP.JSON_FILE_PATH}")
+
+    # Run MCP server
+    mcp.run(
+        transport=transport,
+        host=host,
+        port=port,
+        path=f"/lmo_tools/mcp",
+    )
 
 
 if __name__ == "__main__":

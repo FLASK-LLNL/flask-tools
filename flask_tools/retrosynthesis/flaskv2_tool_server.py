@@ -51,7 +51,7 @@ from lc_conductor.tool_registration import register_tool_server
 )
 @click.option(
     "--transport",
-    type=click.Choice(["stdio", "streamable-http", "sse"]),
+    type=click.Choice(["stdio", "streamable-http"]),
     help="MCP transport type",
     default="streamable-http",
 )

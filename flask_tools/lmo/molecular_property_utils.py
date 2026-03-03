@@ -26,8 +26,20 @@ import os
 from typing import Literal, Tuple
 
 PropertyType = Literal[
-    "density", "hof", "alpha", "cv", "gap", "homo", "lumo", "mu", "r2", "zpve", "lipo",
-    "band_gap", "heat_of_formation", "heat of formation"
+    "density",
+    "hof",
+    "alpha",
+    "cv",
+    "gap",
+    "homo",
+    "lumo",
+    "mu",
+    "r2",
+    "zpve",
+    "lipo",
+    "band_gap",
+    "heat_of_formation",
+    "heat of formation",
 ]
 
 
@@ -45,6 +57,7 @@ def get_density(
     Returns:
         float: Density of the molecule, returns 0.0 if there is an error.
     """
+    #    breakpoint()
     if not HAS_RDKIT:
         raise ImportError(
             "Please install the rdkit support packages to use this module."
@@ -54,26 +67,26 @@ def get_density(
         mol = Chem.MolFromSmiles(smiles)
         if mol is None:
             logger.warning("Invalid SMILES string or molecule could not be created.")
-            return 0.0
+            return "density", 0.0
         mol = Chem.AddHs(mol)
         AllChem.EmbedMolecule(mol, AllChem.ETKDG())
         AllChem.UFFOptimizeMolecule(mol, maxIters=500)
 
         if mol.GetNumConformers() == 0:
             logger.warning("No conformers found for the molecule.")
-            return 0.0
+            return "density", 0.0
         mw = Descriptors.MolWt(mol)
         num_atoms = mol.GetNumAtoms()
         if num_atoms == 0:
             logger.warning("No atoms in the molecule.")
-            return 0.0
+            return "density", 0.0
 
         volume = AllChem.ComputeMolVolume(mol)
         density = mw / volume
         logger.info(f"Density for SMILES {smiles}: {density}")
         return "density", density
     except Exception as e:
-        return 0.0
+        return "density", 0.0
 
 
 def get_density_and_synthesizability(smiles: str) -> Tuple[float, float]:
@@ -158,7 +171,7 @@ def calculate_property_hf(
         logger.warning(
             "Please install the chemprop support packages to use this module."
         )
-        return 0.0
+        return property, 0.0
 
     if not HAS_RDKIT:
         raise ImportError(
@@ -180,19 +193,21 @@ def calculate_property_hf(
     }
     conversions = {
         "band_gap": "gap",
+        "band gap": "gap",
         "heat_of_formation": "hof",
         "heat of formation": "hof",
     }
     if property.lower() in conversions:
-        property = conversions[property.lower()]
-    property = property.lower()
-    if property not in valid_properties:
+        chemprop_property = conversions[property.lower()]
+    else:
+        chemprop_property = property.lower()
+    if chemprop_property not in valid_properties:
         raise ValueError(
             f"Invalid property '{property}'. Must be one of {valid_properties}."
         )
     chemprop_base_path = os.environ.get("CHEMPROP_BASE_PATH")
     if chemprop_base_path:
-        model_path = os.path.join(chemprop_base_path, property)
+        model_path = os.path.join(chemprop_base_path, chemprop_property)
         model_path = os.path.join(model_path, "model_0/best.pt")
         return property, predict_with_chemprop(model_path, [smiles])[0][0]
     else:
