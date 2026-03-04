@@ -37,12 +37,6 @@ from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 REAGENT_KEYS = ["reactants", "agents", "solvents", "catalysts", "atmospheres"]
 PRODUCT_KEYS = ["products"]
 
-# Make HF models and tokenizer global objects
-global fwd_model, retro_model, tokenizer
-fwd_model = None
-retro_model = None
-tokenizer = None
-
 
 def format_rxn_prompt(data: dict, forward: bool) -> dict:
     required_keys = [
@@ -64,7 +58,13 @@ def format_rxn_prompt(data: dict, forward: bool) -> dict:
     return data
 
 
-def predict_reaction_internal(molecules: list[str], retrosynthesis: bool) -> list[str]:
+def predict_reaction_internal(
+    molecules: list[str],
+    retrosynthesis: bool,
+    fwd_model: Optional[AutoModelForCausalLM],
+    retro_model: Optional[AutoModelForCausalLM],
+    tokenizer: AutoTokenizer,
+) -> list[str]:
     if not HAS_FLASKV2:
         raise ImportError(
             "Please install the [flask] optional packages to use this module."

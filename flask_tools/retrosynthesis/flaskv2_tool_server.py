@@ -91,51 +91,48 @@ def main(
         "FLASKv2 Reaction Predictor",
     )
 
+    # HF models and tokenizer
+    fwd_model = None
+    retro_model = None
+    tokenizer = None
+
     # Load tokenizer and models
-    flask.tokenizer = AutoTokenizer.from_pretrained(
+    tokenizer = AutoTokenizer.from_pretrained(
         model_dir_fwd or model_dir_retro, padding_side="left"
     )
-    flask.tokenizer.add_special_tokens({"pad_token": "<|finetune_right_pad_id|>"})
+    tokenizer.add_special_tokens({"pad_token": "<|finetune_right_pad_id|>"})
     if model_dir_fwd:
-        flask.fwd_model = AutoModelForCausalLM.from_pretrained(
+        fwd_model = AutoModelForCausalLM.from_pretrained(
             model_dir_fwd,
             device_map="cuda",
             torch_dtype=torch.bfloat16,
         )
         if adapter_weights_fwd is not None:
-            flask.fwd_model = PeftModel.from_pretrained(
-                flask.fwd_model, adapter_weights_fwd
-            )
-            flask.fwd_model = flask.fwd_model.merge_and_unload()
+            fwd_model = PeftModel.from_pretrained(fwd_model, adapter_weights_fwd)
+            fwd_model = fwd_model.merge_and_unload()
     if model_dir_retro:
-        flask.retro_model = AutoModelForCausalLM.from_pretrained(
+        retro_model = AutoModelForCausalLM.from_pretrained(
             model_dir_retro,
             device_map="cuda",
             torch_dtype=torch.bfloat16,
         )
         if adapter_weights_retro is not None:
-            flask.retro_model = PeftModel.from_pretrained(
-                flask.retro_model, adapter_weights_retro
-            )
-            flask.retro_model = flask.retro_model.merge_and_unload()
+            retro_model = PeftModel.from_pretrained(retro_model, adapter_weights_retro)
+            retro_model = retro_model.merge_and_unload()
 
     # Enable model optimizations
-    if flask.fwd_model is not None:
-        flask.fwd_model.eval()
-        if hasattr(flask.fwd_model, "config") and hasattr(
-            flask.fwd_model.config, "use_cache"
-        ):
-            flask.fwd_model.config.use_cache = True  # enable KV caching
-    if flask.retro_model is not None:
-        flask.retro_model.eval()
-        if hasattr(flask.retro_model, "config") and hasattr(
-            flask.retro_model.config, "use_cache"
-        ):
-            flask.retro_model.config.use_cache = True  # enable KV caching
+    if fwd_model is not None:
+        fwd_model.eval()
+        if hasattr(fwd_model, "config") and hasattr(fwd_model.config, "use_cache"):
+            fwd_model.config.use_cache = True  # enable KV caching
+    if retro_model is not None:
+        retro_model.eval()
+        if hasattr(retro_model, "config") and hasattr(retro_model.config, "use_cache"):
+            retro_model.config.use_cache = True  # enable KV caching
 
     # Dynamic tool creation based on input models
     available_tools = []
-    if flask.fwd_model is not None:
+    if fwd_model is not None:
         available_tools.append("Forward Prediction")
 
         @mcp.tool()
@@ -149,9 +146,11 @@ def main(
                 list[str]: a list of predictions, each of which is a json string listing the predicted product molecule(s) in SMILES.
             """
             logger.debug("Calling `predict_reaction_products`")
-            return flask.predict_reaction_internal(reactants, False)
+            return flask.predict_reaction_internal(
+                reactants, False, fwd_model, retro_model, tokenizer
+            )
 
-    if flask.retro_model is not None:
+    if retro_model is not None:
         available_tools.append("Single-Step Retrosynthesis")
 
         @mcp.tool()
@@ -166,7 +165,9 @@ def main(
                     as well as potential (re)agents and solvents used in the reaction.
             """
             logger.debug("Calling `predict_reaction_reactants`")
-            return flask.predict_reaction_internal(products, True)
+            return flask.predict_reaction_internal(
+                products, True, fwd_model, retro_model, tokenizer
+            )
 
     logger.info(f"Available tools: {', '.join(available_tools)}")
 
