@@ -23,16 +23,10 @@ import click
 import uvicorn
 from loguru import logger
 
-from mcp.server.fastmcp import FastMCP
-
-# from fastmcp import FastMCP
+from fastmcp import FastMCP
 
 mcp = FastMCP(
     "Molecular Minds Property Predictor",
-    sse_path=f"/flask_molecular_minds_tool/sse",
-    message_path=f"/flask_molecular_minds_tool/messages/",
-    host="0.0.0.0",
-    json_response=True,
 )
 
 # Add path to find Molecular_Minds module
@@ -179,6 +173,12 @@ def predict_vp(smiles: str) -> float:
 
 
 @click.command()
+@click.option(
+    "--transport",
+    type=click.Choice(["stdio", "streamable-http"]),
+    help="MCP transport type",
+    default="streamable-http",
+)
 @click.option("--port", type=int, default=8128, help="Port to run the server on")
 @click.option("--host", type=str, default=None, help="Host to run the server on")
 @click.option(
@@ -203,6 +203,7 @@ def predict_vp(smiles: str) -> float:
 @click.pass_context
 def main(
     ctx,
+    transport: str,
     port: int,
     host: str,
     name: str,
@@ -224,11 +225,14 @@ def main(
             f"{name} could not connect to server for registration -- requires manual registration"
         )
 
-    asgi_app = get_asgi_app(mcp)
-    if asgi_app:
-        uvicorn.run(asgi_app, host=host or "0.0.0.0", port=port, factory=True)
-    else:
-        logger.error("Could not access FastMCP ASGI app")
+    # Run MCP server
+    mcp.run(
+        transport=transport,
+        host=host,
+        port=port,
+        path=f"/flask_molecular_minds_tool/mcp",
+        json_response=True,
+    )
 
 
 # ===== SCRIPT =====

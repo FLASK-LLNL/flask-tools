@@ -83,7 +83,7 @@ def main(
         "SMILES Diagnosis and retrieval MCP Server",
     )
 
-    import flask_tools.lmo.molecular_generation_server as LMO_MCP
+    import flask_tools.lmo.lmo_tools as LMO_MCP
 
     LMO_MCP.setup_autogen_pool(
         api_key=api_key,
