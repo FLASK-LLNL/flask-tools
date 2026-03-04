@@ -53,14 +53,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 
-from mcp.server.fastmcp import FastMCP
-
-# from fastmcp import FastMCP
+from fastmcp import FastMCP
 from starlette.responses import JSONResponse
 
-mcp = FastMCP(
-    "RAG Server",
-)
+mcp = FastMCP("RAG Server")
 
 
 class Role(StrEnum):
