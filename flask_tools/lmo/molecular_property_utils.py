@@ -38,6 +38,7 @@ PropertyType = Literal[
     "zpve",
     "lipo",
     "band_gap",
+    "band gap",
     "heat_of_formation",
     "heat of formation",
 ]
