@@ -58,7 +58,6 @@ def get_density(
     Returns:
         float: Density of the molecule, returns 0.0 if there is an error.
     """
-    #    breakpoint()
     if not HAS_RDKIT:
         raise ImportError(
             "Please install the rdkit support packages to use this module."
