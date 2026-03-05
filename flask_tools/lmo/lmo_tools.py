@@ -70,7 +70,6 @@ def diagnose_smiles(smiles: str) -> str:
         raise ImportError(
             "Please install the rdkit support packages to use this module."
         )
-    breakpoint()
     logger.info(f"Diagnosing SMILES string: {smiles}")
     task = DiagnoseSMILESTask(smiles=smiles)
 
