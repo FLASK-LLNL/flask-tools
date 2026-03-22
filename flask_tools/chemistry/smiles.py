@@ -38,10 +38,6 @@ logger.info("[RDKit-SMILES] Starting Chem and BioInformatics MCP Server")
 
 import charge.servers.smiles_utils as smiles
 
-SMILES_mcp.tool()(smiles.canonicalize_smiles)
-
-SMILES_mcp.tool()(smiles.verify_smiles)
-
 SMILES_mcp.tool()(smiles.get_synthesizability)
 
 SMILES_mcp.tool()(smiles.known_smiles)

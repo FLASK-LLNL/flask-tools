@@ -106,10 +106,6 @@ def main(
     mcp.tool()(LMO_MCP.is_already_known)
     mcp.tool()(LMO_MCP.calculate_property)
 
-    # Add the SMILES utility functions as MCP tools
-    mcp.tool()(smiles_utils.canonicalize_smiles)
-    mcp.tool()(smiles_utils.verify_smiles)
-
     logger.info(f"Using model: {model} on backend: {backend}")
     logger.info(f"Using known molecules database at: {LMO_MCP.JSON_FILE_PATH}")
 

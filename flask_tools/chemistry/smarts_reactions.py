@@ -40,6 +40,4 @@ import charge.servers.smiles_utils as smiles
 
 SMARTS_mcp.tool()(smarts.verify_reaction_SMARTS)
 
-SMARTS_mcp.tool()(smiles.verify_smiles)
-
 SMARTS_mcp.tool()(smarts.verify_reaction)
