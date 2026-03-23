@@ -37,6 +37,29 @@ JSON_FILE_PATH = f"{os.getcwd()}/known_molecules.json"
 AGENT_BACKEND: AutoGenBackend | None = None
 
 
+def _load_known_molecules(file_path: str) -> list[dict]:
+    try:
+        with open(file_path) as f:
+            raw_contents = f.read()
+    except FileNotFoundError:
+        logger.warning(f"{file_path} not found. Treating as an empty database.")
+        return []
+
+    if not raw_contents.strip():
+        logger.warning(f"{file_path} is empty. Treating as an empty database.")
+        return []
+
+    try:
+        known_molecules = json.loads(raw_contents)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Known molecules file is not valid JSON: {file_path}") from e
+
+    if not isinstance(known_molecules, list):
+        raise ValueError(f"Known molecules file must contain a JSON list: {file_path}")
+
+    return known_molecules
+
+
 class DiagnoseSMILESTask(Task):
     def __init__(self, smiles: str, *args, **kwargs):
         system_prompt = (
@@ -83,10 +106,7 @@ def diagnose_smiles(smiles: str) -> str:
     try:
         response = asyncio.run(diagnose_agent.run())
         assert response is not None
-        assert len(response.messages) > 0  # type: ignore
-        assert response.messages[-1] is not None  # type: ignore
-
-        diagnoses = response.messages[-1].content  # type: ignore
+        diagnoses = response
         logger.info(f"Diagnosis: {diagnoses}")
         return f"SMILES diagnoses: {diagnoses}"  # type: ignore
 
@@ -117,18 +137,13 @@ def is_already_known(smiles: str) -> bool:
 
     try:
         canonical_smiles = smiles_utils.canonicalize_smiles(smiles)
-
-        try:
-            with open(JSON_FILE_PATH) as f:
-                known_mols = json.load(f)
-                known_smiles = [mol["smiles"] for mol in known_mols]
-
-        except FileNotFoundError:
-            logger.warning(f"{JSON_FILE_PATH} not found. Creating a new one.")
-            known_mols = []
-
     except Exception as e:
         raise ValueError("Error in canonicalizing SMILES string.") from e
+
+    known_mols = _load_known_molecules(JSON_FILE_PATH)
+    known_smiles = [
+        mol["smiles"] for mol in known_mols if isinstance(mol, dict) and "smiles" in mol
+    ]
 
     # Check if the SMILES string is already known (in the database)
     # This is a placeholder for the actual database check
@@ -136,14 +151,14 @@ def is_already_known(smiles: str) -> bool:
 
 
 def calculate_property(
-    smiles: str, property: Literal["density", "synthesizability"]
+    smiles: str, property: Literal["density"]
 ) -> Tuple[PropertyType, float]:
     """
     Get a molecular property given its SMILES string.
 
     Args:
         smiles (str): The input SMILES string.
-        property (str): The property to calculate ("density" or "synthesizability").
+        property (str): The property to calculate ("density").
     Returns:
     str:
         The property to predict. Must be one of the valid property names listed above.
@@ -157,10 +172,6 @@ def calculate_property(
         _, density = get_density(smiles, property)
         logger.info(f"Density for SMILES {smiles}: {density}")
         return property, density
-    elif property == "synthesizability":
-        synth_score = smiles_utils.get_synthesizability(smiles)
-        logger.info(f"Synthesizability for SMILES {smiles}: {synth_score}")
-        return property, synth_score
     else:
         raise ValueError(f"Unknown property: {property}")
 

@@ -42,7 +42,7 @@ if molecular_minds_path not in sys.path:
 from Molecular_Minds import predict_smiles, get_default_predictor, set_default_model
 import Molecular_Minds.molecular_minds_predictor
 
-from lc_conductor.tool_registration import register_tool_server, get_asgi_app
+from lc_conductor.tool_registration import register_tool_server
 from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 
 

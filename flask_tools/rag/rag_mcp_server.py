@@ -46,7 +46,7 @@ from flask_tools.retrosynthesis.flaskv2_reactions import (
 
 import logging
 
-from lc_conductor.tool_registration import register_tool_server, get_asgi_app
+from lc_conductor.tool_registration import register_tool_server
 from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 
 logger = logging.getLogger(__name__)

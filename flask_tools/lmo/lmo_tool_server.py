@@ -95,16 +95,20 @@ def main(
     # This should be convierted to a shared database instance
     # to ensure the MCP and the backend use the same known molecules
 
+    json_file = os.path.abspath(json_file)
+    os.makedirs(os.path.dirname(json_file) or ".", exist_ok=True)
     if not os.path.exists(json_file):
-        abs_path = os.path.abspath(json_file)
-        with open(abs_path, "w") as f:
-            pass
+        with open(json_file, "w") as f:
+            f.write("[]")
 
     LMO_MCP.JSON_FILE_PATH = json_file
 
     mcp.tool()(LMO_MCP.diagnose_smiles)
     mcp.tool()(LMO_MCP.is_already_known)
     mcp.tool()(LMO_MCP.calculate_property)
+
+    # Add the SMILES utility get_synthesizability function as MCP tools
+    mcp.tool()(smiles_utils.get_synthesizability)
 
     logger.info(f"Using model: {model} on backend: {backend}")
     logger.info(f"Using known molecules database at: {LMO_MCP.JSON_FILE_PATH}")
