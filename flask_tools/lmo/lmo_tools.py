@@ -99,7 +99,7 @@ def diagnose_smiles(smiles: str) -> str:
     global AGENT_BACKEND
     assert (
         AGENT_BACKEND is not None
-    ), "Agent pool is not initialized. Diagnoise Tool not available."
+    ), "Agent backend is not initialized. Diagnose Tool not available."
 
     diagnose_agent = AGENT_BACKEND.create_agent(task=task)
 
