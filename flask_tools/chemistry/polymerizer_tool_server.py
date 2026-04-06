@@ -61,6 +61,12 @@ def main(
     # Init MCP server
     mcp = FastMCP(
         "Polymerizer",
+        instructions=(
+            "Generate polymer repeat-unit SMILES from one monomer or from a "
+            "two-monomer monomer set, and suggest supported forward "
+            "polymerization rules for the corresponding monomer-to-polymer "
+            "transformation."
+        ),
         # description=(
         # "Expose monomer→polymer repeat transforms via MCP tools. "
         # "Tools: polymerize_explicit, polymerize_auto, suggest_rules."
@@ -69,64 +75,82 @@ def main(
     @mcp.tool()
     def polymerize_explicit(
         monomer_smiles: str,
-        strategy: Literal[
-            "vinyl",
-            "acrylate",
-            "rop_thf",
-            "rop_epoxide",
-            "ketene",
-            "cond_alpha_hydroxy_acid",
-            "cond_diphenol",
-            "rop_lactam",
-            "cond_omega_amino_acid",
-            "alkyne",
-            "polyacetylene",  # optional pretty-printer for C#C
-        ],
+        strategy: str,
+        comonomer_smiles: str | None = None,
         bigsmiles_wrap: bool = False,
     ) -> str:
         """
-        Apply a specific polymerization rule and return the repeat-unit SMILES with [*] endpoints.
-        Set bigsmiles_wrap=True to wrap in a simple {…} block.
+        Apply a specific forward polymerization strategy and return the polymer
+        repeat-unit SMILES.
+
+        Use `comonomer_smiles` for supported two-monomer step-growth cases such
+        as polyester and polyamide formation. Single-monomer cases include
+        chain-growth, ring-opening, and supported bicyclic ROMP transforms.
         """
-        rep = pr.monomer_to_repeat_smiles(monomer_smiles, strategy=strategy)
-        return pr.wrap_bigsmiles_like(rep) if bigsmiles_wrap else rep
+        return pr.polymerize_explicit(
+            monomer_smiles=monomer_smiles,
+            strategy=strategy,
+            comonomer_smiles=comonomer_smiles,
+            bigsmiles_wrap=bigsmiles_wrap,
+        )
 
     @mcp.tool()
-    def suggest_rules(monomer_smiles: str, top_k: int = 5) -> List[Suggestion]:
+    def suggest_rules(monomer_smiles: str | list[str], top_k: int = 5) -> List[Suggestion]:
         """
-        Inspect a monomer and return ranked candidate strategies with reasons.
-        This does NOT perform any transformation.
+        Suggest ranked forward polymerization rules for converting one monomer
+        or a two-monomer monomer set into a polymer repeat unit.
         """
-        ranked = pr.suggest_polymerization_rules(monomer_smiles)
-        out = [
-            {
-                "strategy": s.strategy,
-                "confidence": float(s.confidence),
-                "reason": s.reason,
-            }
-            for s in ranked[:top_k]
-        ]
-        return out
+        return pr.suggest_rules(monomer_smiles=monomer_smiles, top_k=top_k)
 
     @mcp.tool()
     def polymerize_auto(
-        monomer_smiles: str,
+        monomer_smiles: str | list[str],
         min_confidence: float = 0.80,
         allow_fallback_to_lower_confidence: bool = True,
         bigsmiles_wrap: bool = False,
     ) -> PolymerizeResult:
         """
-        Auto-select and apply a single-monomer rule.
-        Returns repeat SMILES, chosen strategy, and rationale.
-        Raises a helpful error if a comonomer is required or the case is ambiguous.
+        Auto-select a polymerization rule and return the repeat-unit SMILES.
+
+        Pass either one monomer SMILES string or a list containing one or two
+        monomer SMILES strings. Two-monomer inputs are used for supported
+        step-growth sets such as diol/diacid, diol/anhydride, and
+        diamine/diacid.
         """
-        rep, strat, why = pr.monomer_to_repeat_auto(
-            monomer_smiles,
+        return pr.polymerize_auto(
+            monomer_smiles=monomer_smiles,
+            min_confidence=min_confidence,
+            allow_fallback_to_lower_confidence=allow_fallback_to_lower_confidence,
+            bigsmiles_wrap=bigsmiles_wrap,
+        )
+
+    @mcp.tool(name="classify_polymer_input")
+    def assess_input(smiles: str) -> dict:
+        """Classify whether a SMILES string looks like a monomer candidate or a polymer repeat/fragment."""
+        return pr.assess_input(smiles)
+
+    @mcp.tool(name="verify_monomer_candidate_for_polymer")
+    def check_retrosynthesis_candidate(
+        target_polymer_smiles: str,
+        candidate_monomer_smiles: str,
+        strategy: str | None = None,
+        min_confidence: float = 0.80,
+        allow_fallback_to_lower_confidence: bool = True,
+    ) -> dict:
+        """
+        Verify whether a candidate monomer reproduces a target polymer repeat.
+
+        This is a forward-validation check for polymer retrosynthesis workflows.
+        For two-monomer hypotheses, use `polymerize_auto` or `polymerize_explicit`
+        on the monomer set directly.
+        """
+        return pr.check_retrosynthesis_candidate(
+            target_polymer_smiles=target_polymer_smiles,
+            candidate_monomer_smiles=candidate_monomer_smiles,
+            strategy=strategy,
             min_confidence=min_confidence,
             allow_fallback_to_lower_confidence=allow_fallback_to_lower_confidence,
         )
-        rep_out = pr.wrap_bigsmiles_like(rep) if bigsmiles_wrap else rep
-        return {"repeat_smiles": rep_out, "strategy": strat, "rationale": why}
 
     try:
         register_tool_server(port, host, name, copilot_port, copilot_host)
