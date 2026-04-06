@@ -3,7 +3,7 @@
 import click
 from typing_extensions import TypedDict
 from loguru import logger
-from typing import List
+from typing import Literal, List
 from fastmcp import FastMCP
 
 # import your existing module (the one we’ve been building)
@@ -67,6 +67,9 @@ def main(
             "polymerization rules for the corresponding monomer-to-polymer "
             "transformation."
         ),
+        # description=(
+        # "Expose monomer→polymer repeat transforms via MCP tools. "
+        # "Tools: polymerize_explicit, polymerize_auto, suggest_rules."
     )
 
     @mcp.tool()

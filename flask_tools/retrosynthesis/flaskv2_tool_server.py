@@ -57,7 +57,9 @@ from lc_conductor.tool_registration import register_tool_server
 )
 @click.option("--port", type=int, default=8125, help="Port to run the server on")
 @click.option("--host", type=str, default=None, help="Host to run the server on")
-@click.option("--name", type=str, default="retro_tools", help="Name of the MCP server")
+@click.option(
+    "--name", type=str, default="flaskv2_tools", help="Name of the MCP server"
+)
 @click.option(
     "--copilot-port", type=int, default=8001, help="Port to the running copilot backend"
 )
