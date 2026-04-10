@@ -548,7 +548,7 @@ def _apply_romp_bicyclic_alkene(mol: Chem.Mol) -> Chem.Mol | None:
     if mol.HasSubstructMatch(PATT_IMIDE_FUSED_BICYCLOALKENE_ROMP):
         product = first_valid_product(mol, RXN_IMIDE_FUSED_BICYCLOALKENE_ROMP)
         if product is not None:
-            return _normalize_romp_repeat_endgroups(product)
+            return product
 
     for match in mol.GetSubstructMatches(PATT_BICYCLOALKENE_ROMP):
         atom_1, atom_2, *_ = match
@@ -566,47 +566,8 @@ def _apply_romp_bicyclic_alkene(mol: Chem.Mol) -> Chem.Mol | None:
             Chem.SanitizeMol(product)
         except Exception:
             continue
-        return _normalize_romp_repeat_endgroups(product)
+        return product
     return None
-
-
-def _normalize_romp_repeat_endgroups(mol: Chem.Mol) -> Chem.Mol:
-    """Prefer one vinyl end and one single-bond wildcard end for ROMP repeats."""
-    rw = Chem.RWMol(Chem.Mol(mol))
-    star_pairs: list[tuple[int, int]] = []
-
-    for atom in rw.GetAtoms():
-        if atom.GetAtomicNum() != 0:
-            continue
-        neighbors = list(atom.GetNeighbors())
-        if len(neighbors) != 1:
-            continue
-        neighbor_idx = neighbors[0].GetIdx()
-        bond = rw.GetBondBetweenAtoms(atom.GetIdx(), neighbor_idx)
-        if bond.GetBondType() == Chem.BondType.DOUBLE:
-            star_pairs.append((atom.GetIdx(), neighbor_idx))
-
-    if len(star_pairs) != 2:
-        return mol
-
-    left_star, left_carbon = star_pairs[0]
-    left_neighbors = [
-        neighbor.GetIdx()
-        for neighbor in rw.GetAtomWithIdx(left_carbon).GetNeighbors()
-        if neighbor.GetIdx() != left_star and neighbor.GetAtomicNum() != 0
-    ]
-    if len(left_neighbors) != 1:
-        return mol
-
-    rw.GetBondBetweenAtoms(left_star, left_carbon).SetBondType(Chem.BondType.SINGLE)
-    rw.GetBondBetweenAtoms(left_carbon, left_neighbors[0]).SetBondType(Chem.BondType.DOUBLE)
-
-    right_star, right_carbon = star_pairs[1]
-    rw.GetBondBetweenAtoms(right_star, right_carbon).SetBondType(Chem.BondType.SINGLE)
-
-    normalized = rw.GetMol()
-    Chem.SanitizeMol(normalized)
-    return normalized
 
 
 def _apply_cond_omega_amino_acid(mol: Chem.Mol) -> Chem.Mol | None:
