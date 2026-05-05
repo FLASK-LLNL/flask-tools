@@ -7,7 +7,7 @@
 
 import re
 import json
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 
 
 class SmilesTokenizer(ABC):
@@ -24,11 +24,11 @@ class SmilesTokenizer(ABC):
     def tokenize(self, smiles: str) -> list[str]:
         return [token for token in self.regex.findall(smiles)]
 
-    @abstractclassmethod
+    @abstractmethod
     def _convert_token_to_id(self, token: str) -> int:
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _convert_id_to_token(self, index: int) -> str:
         pass
 

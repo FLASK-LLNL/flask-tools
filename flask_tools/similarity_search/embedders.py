@@ -9,7 +9,7 @@ import torch
 import numpy as np
 from numpy import ndarray
 from torch.nn.utils.rnn import pad_sequence
-from .rag_tokenizers import SmilesTokenizer
+from .tokenizers import SmilesTokenizer
 
 
 class SmilesEmbedder:

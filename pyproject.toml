@@ -36,11 +36,11 @@ rdkit = ["rdkit>=2025.3.6"]
 flask = ["transformers", "peft", "trl", "torch>=2.8.0"]
 chemprop = ["chemprop>=2.2.0", "torch>=2.8.0", "lightning"]
 chemprice = []
-rag = ["autogen-agentchat>=0.7.0", "datasets", "faiss-cpu", "openai>=2.0.0", "transformers[torch]"]
+similarity_search = ["faiss-cpu", "torch>=2.8.0"]
 molecular_minds = ["torch-geometric", "torch-scatter"]
 test = ["pytest", "pytest-asyncio", "pytest-mock", "responses", "httpx", "requests-mock"]
 
 # Define a set of optional packages for use when deploying persistent data services
 pds = ["flask-tools[autogen,rdkit,chemprice]"]
 
-all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds]"]
+all = ["flask-tools[rdkit,flask,chemprop,chemprice,similarity_search,molecular_minds]"]

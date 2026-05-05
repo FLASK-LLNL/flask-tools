@@ -37,8 +37,8 @@ class FaissDataRetriever:
         emb = np.load(emb_path)
         dim = emb.shape[1]
         # self.faiss_index = faiss.IndexHNSWFlat(dim, 32)
-        self.faiss_index = faiss.IndexFlatL2(dim)
-        self.faiss_index.metric_type = faiss.METRIC_Jaccard
+        self.faiss_index = faiss.IndexFlat(dim)
+        # self.faiss_index.metric_type = faiss.METRIC_Jaccard
         self.faiss_index.add(emb)
 
     def _load_json(self, filename: str) -> list[dict]:
