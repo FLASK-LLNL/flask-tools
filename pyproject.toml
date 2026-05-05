@@ -39,8 +39,9 @@ chemprice = []
 rag = ["autogen-agentchat>=0.7.0", "datasets", "faiss-cpu", "openai>=2.0.0", "transformers[torch]"]
 molecular_minds = ["torch-geometric", "torch-scatter"]
 test = ["pytest", "pytest-asyncio", "pytest-mock", "responses", "httpx", "requests-mock"]
+tartarus = ["openbabel"]
 
 # Define a set of optional packages for use when deploying persistent data services
 pds = ["flask-tools[autogen,rdkit,chemprice]"]
 
-all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds]"]
+all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds, tartarus]"]
