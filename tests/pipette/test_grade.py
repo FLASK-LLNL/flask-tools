@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import pytest
 
-from pipette.config import PipetteConfig
-from pipette.grade_rxn import (
+from flask_tools.pipette.config import PipetteConfig
+from flask_tools.pipette.grade_rxn import (
     _apply_debug_overrides,
     grade_reaction,
     load_reaction_smiles_file,
 )
-from pipette.constants import FinalGrade, ReactionGrade
+from flask_tools.pipette.constants import FinalGrade, ReactionGrade
 
 
 def test_grade_reaction_uses_default_exact_yaml_and_returns_batch(monkeypatch) -> None:
@@ -41,7 +41,8 @@ def test_grade_reaction_uses_default_exact_yaml_and_returns_batch(monkeypatch) -
         PipetteConfig, "from_default_exact_yaml", fake_from_default_exact_yaml
     )
     monkeypatch.setattr(
-        "pipette.grade_rxn.build_default_pipeline", fake_build_default_pipeline
+        "flask_tools.pipette.grade_rxn.build_default_pipeline",
+        fake_build_default_pipeline,
     )
 
     result = grade_reaction(["CCO>>CC=O", "CC>>C=C"])

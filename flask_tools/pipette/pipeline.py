@@ -4,8 +4,8 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 import traceback
 
-from pipette.config import PipetteConfig
-from pipette.verifiers import (
+from .config import PipetteConfig
+from .verifiers import (
     BasicSmilesValidationChecker,
     ChargeConservationChecker,
     ExactMatchChecker,
@@ -13,12 +13,12 @@ from pipette.verifiers import (
     ReactionChecker,
     ReactionEnergyChecker,
 )
-from pipette.verifiers.base import Speed, CacheableReactionChecker
-from pipette.judges import LLMJudge
-from pipette.constants import ReactionGrade, ToolResult, ToolStatus
-from pipette.reaction_fixer import LLMReactionFixer, ReactionFix
-from pipette.rules import apply_exact_rules
-from pipette.smiles import canonicalize_reaction_smiles
+from .verifiers.base import Speed, CacheableReactionChecker
+from .judges import LLMJudge
+from .constants import ReactionGrade, ToolResult, ToolStatus
+from .reaction_fixer import LLMReactionFixer, ReactionFix
+from .rules import apply_exact_rules
+from .smiles import canonicalize_reaction_smiles
 
 CheckerFactory = Callable[[PipetteConfig], ReactionChecker]
 

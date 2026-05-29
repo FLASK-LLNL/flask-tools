@@ -3,10 +3,10 @@ from __future__ import annotations
 import sys
 import pytest
 
-from pipette.constants import FinalGrade
-from pipette.grade_rxn import _apply_debug_overrides, grade_reaction, main
-from pipette.config import load_config, ConfigType
-from pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.constants import FinalGrade
+from flask_tools.pipette.grade_rxn import _apply_debug_overrides, grade_reaction, main
+from flask_tools.pipette.config import load_config, ConfigType
+from flask_tools.pipette.reaction_fixer import ReactionFix
 
 
 ORIGINAL_REACTION_SMILES = "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"

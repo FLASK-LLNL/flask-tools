@@ -1,5 +1,5 @@
-from pipette.grade_rxn import grade_reaction
-from pipette.constants import FinalGrade, ReactionGrade, ToolResult, ToolStatus
+from .grade_rxn import grade_reaction
+from .constants import FinalGrade, ReactionGrade, ToolResult, ToolStatus
 
 __all__ = [
     "FinalGrade",

@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import StrEnum
 
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus
 
 
 class Speed(StrEnum):

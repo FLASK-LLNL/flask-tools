@@ -6,10 +6,10 @@ from pathlib import Path
 
 from rdkit import Chem
 
-from pipette.verifiers.base import ReactionChecker
-from pipette.config import PipetteConfig
-from pipette.constants import FinalGrade, ToolResult, ToolStatus, MissingProductRule
-from pipette.smiles import parse_reaction_smi
+from .base import ReactionChecker
+from ..config import PipetteConfig
+from ..constants import FinalGrade, ToolResult, ToolStatus, MissingProductRule
+from ..smiles import parse_reaction_smi
 
 
 def atom_bag(

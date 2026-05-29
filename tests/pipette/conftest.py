@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pytest
 
-from pipette.config import PipetteConfig
-from pipette.constants import FinalGrade, ReactionGrade, ToolResult
-from pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.config import PipetteConfig
+from flask_tools.pipette.constants import FinalGrade, ReactionGrade, ToolResult
+from flask_tools.pipette.reaction_fixer import ReactionFix
 
 
 @pytest.fixture
@@ -88,10 +88,11 @@ def install_mock_llm_services(monkeypatch):
         judge = RecordingJudge(final_grade=final_grade)
 
         monkeypatch.setattr(
-            "pipette.pipeline.LLMReactionFixer.from_config", lambda config: fixer
+            "flask_tools.pipette.pipeline.LLMReactionFixer.from_config",
+            lambda config: fixer,
         )
         monkeypatch.setattr(
-            "pipette.pipeline.LLMJudge.from_config", lambda config: judge
+            "flask_tools.pipette.pipeline.LLMJudge.from_config", lambda config: judge
         )
         return fixer, judge
 

@@ -3,15 +3,15 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from pipette.config import PipetteConfig
-from pipette.constants import (
+from .config import PipetteConfig
+from .constants import (
     FinalGrade,
     LLM_API_KEY_ENV_VARS,
     ReactionGrade,
     ToolResult,
     resolve_llm_api_key,
 )
-from pipette.llm_query import OpenAI, create_openai_client, query_messages
+from .llm_query import OpenAI, create_openai_client, query_messages
 
 
 class LLMJudge:

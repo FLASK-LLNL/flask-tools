@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from pipette.verifiers.reaction_energy import (
+from flask_tools.pipette.verifiers.reaction_energy import (
     MoleculeEnergyStore,
     ReactionEnergyChecker,
     ReactionEnergyRecord,
     MoleculeEnergyRecord,
 )
-from pipette.config import PipetteConfig, RulesConfig
-from pipette.constants import ToolStatus
+from flask_tools.pipette.config import PipetteConfig, RulesConfig
+from flask_tools.pipette.constants import ToolStatus
 
 
 class EmptyDFTExecutor:
@@ -47,7 +47,7 @@ def test_csv_molecule_energy_store_looks_up_reaction_energy(
     )
 
     monkeypatch.setattr(
-        "pipette.verifiers.reaction_energy.smiles_to_inchi_key",
+        "flask_tools.pipette.verifiers.reaction_energy.smiles_to_inchi_key",
         lambda smiles: {
             "CCO": "ETHANOL",
             "CC=O": "ACETALDEHYDE",
@@ -77,7 +77,7 @@ def test_reaction_energy_checker_uses_csv_database_path(monkeypatch, tmp_path) -
     )
 
     monkeypatch.setattr(
-        "pipette.verifiers.reaction_energy.smiles_to_inchi_key",
+        "flask_tools.pipette.verifiers.reaction_energy.smiles_to_inchi_key",
         lambda smiles: {
             "CCO": "ETHANOL",
             "CC=O": "ACETALDEHYDE",
@@ -99,7 +99,7 @@ def test_reaction_energy_checker_uses_csv_database_path(monkeypatch, tmp_path) -
 def test_reaction_energy_checker_uses_fake_dft_fallback(monkeypatch) -> None:
     sleep_calls: list[float] = []
     monkeypatch.setattr(
-        "pipette.verifiers.reaction_energy.time.sleep",
+        "flask_tools.pipette.verifiers.reaction_energy.time.sleep",
         lambda seconds: sleep_calls.append(seconds),
     )
 

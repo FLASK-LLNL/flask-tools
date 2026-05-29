@@ -4,10 +4,10 @@ from collections import Counter
 from dataclasses import dataclass
 import json
 
-from pipette.config import PipetteConfig
-from pipette.constants import ToolResult, resolve_llm_api_key
-from pipette.llm_query import OpenAI, create_openai_client, query_messages
-from pipette.smiles import (
+from .config import PipetteConfig
+from .constants import ToolResult, resolve_llm_api_key
+from .llm_query import OpenAI, create_openai_client, query_messages
+from .smiles import (
     canonicalize_reaction_smiles,
     canonicalize_smiles,
     split_reaction_smiles,

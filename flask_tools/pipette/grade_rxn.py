@@ -7,12 +7,12 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pipette.config import PipetteConfig, load_config, ConfigType
-from pipette.constants import ReactionGrade, ToolResult
-from pipette.pipeline import build_default_pipeline
+from .config import PipetteConfig, load_config, ConfigType
+from .constants import ReactionGrade, ToolResult
+from .pipeline import build_default_pipeline
 
 if TYPE_CHECKING:
-    from pipette.judges import LLMJudge
+    from .judges import LLMJudge
 
 REACTION_SMILES_COLUMNS = (
     "rxn_smiles",

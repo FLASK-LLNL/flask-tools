@@ -27,8 +27,8 @@ from loguru import logger
 
 from lc_conductor.tool_registration import register_tool_server
 from flask_tools.utils.server_utils import get_hostname
-from pipette.grade_rxn import grade_reaction_json, _apply_debug_overrides
-from pipette.config import load_config
+from .grade_rxn import grade_reaction_json, _apply_debug_overrides
+from .config import load_config
 
 
 @click.command()

@@ -6,10 +6,10 @@ from pathlib import Path
 import time
 from typing import Protocol, Iterable
 
-from pipette.verifiers.base import CacheableReactionChecker
-from pipette.config import PipetteConfig
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
-from pipette.smiles import (
+from .base import CacheableReactionChecker
+from ..config import PipetteConfig
+from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..smiles import (
     split_reaction_smiles,
     smiles_to_inchi_key,
     parse_reaction_smi,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pipette.constants import FinalGrade, ReactionGrade, ToolResult, ToolStatus
+from .constants import FinalGrade, ReactionGrade, ToolResult, ToolStatus
 
 
 def apply_exact_rules(results: list[ToolResult]) -> ReactionGrade:

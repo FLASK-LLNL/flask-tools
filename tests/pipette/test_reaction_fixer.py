@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from pipette.reaction_fixer import LLMReactionFixer
+from flask_tools.pipette.reaction_fixer import LLMReactionFixer
 
 
 class _FakeMessage:

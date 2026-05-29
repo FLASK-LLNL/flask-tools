@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from pipette.config import PipetteConfig
+from flask_tools.pipette.config import PipetteConfig
 
 
 def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:

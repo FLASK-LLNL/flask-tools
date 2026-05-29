@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from pipette.verifiers.base import ReactionChecker
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
-from pipette.smiles import parse_reaction_smi
+from .base import ReactionChecker
+from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..smiles import parse_reaction_smi
 
 
 def validate_smiles(rxn_smiles: str) -> bool:

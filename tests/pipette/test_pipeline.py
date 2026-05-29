@@ -3,17 +3,17 @@ from __future__ import annotations
 import pytest
 import pandas as pd
 
-from pipette.verifiers.base import ReactionChecker
-from pipette.config import LLMJudgeConfig, PipetteConfig
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
-from pipette.reaction_fixer import ReactionFix
-from pipette.pipeline import (
+from flask_tools.pipette.verifiers.base import ReactionChecker
+from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig
+from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
+from flask_tools.pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.pipeline import (
     GradingPipeline,
     PendingReaction,
     build_default_pipeline,
     resolve_tool_list,
 )
-from pipette.verifiers.base import Speed
+from flask_tools.pipette.verifiers.base import Speed
 from conftest import RecordingJudge
 
 # todo check this file
@@ -174,7 +174,9 @@ def test_ai_mode_requires_api_key_for_default_judge(monkeypatch) -> None:
 
 def test_ai_mode_uses_default_judge_when_none_is_provided(monkeypatch) -> None:
     judge = RecordingJudge()
-    monkeypatch.setattr("pipette.pipeline.LLMJudge.from_config", lambda config: judge)
+    monkeypatch.setattr(
+        "flask_tools.pipette.pipeline.LLMJudge.from_config", lambda config: judge
+    )
 
     pipeline = GradingPipeline(
         checkers=[

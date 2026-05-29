@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 
-from pipette.judges import LLMJudge
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
+from flask_tools.pipette.judges import LLMJudge
+from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
 
 
 class _FakeMessage:

@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 import yaml
 
-from pipette.constants import DEFAULT_LLM_BASE_URL, resolve_llm_base_url
+from .constants import DEFAULT_LLM_BASE_URL, resolve_llm_base_url
 
 
 def package_data_path(filename: str) -> Path:

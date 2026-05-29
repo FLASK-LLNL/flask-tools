@@ -3,9 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from pipette.verifiers.base import ReactionChecker
-from pipette.constants import FinalGrade, ToolResult, ToolStatus
-from pipette.smiles import canonicalize_reaction_smiles
+from .base import ReactionChecker
+from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..smiles import canonicalize_reaction_smiles
 
 
 @dataclass
