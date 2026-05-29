@@ -1,0 +1,51 @@
+smiles,common_name
+O,water
+CO,methanol
+CCO,ethanol
+CCCO,1-propanol
+CCCCO,1-butanol
+CC(C)O,isopropanol
+CC(C)(C)O,tert-butanol
+OCCO,ethylene glycol
+OCCCO,1,3-propanediol
+CC(=O)O,acetic acid
+CC#N,acetonitrile
+CS(C)=O,dimethyl sulfoxide
+CN(C)C=O,dimethylformamide
+CC(=O)N(C)C,dimethylacetamide
+CN1CCCC1=O,N-methyl-2-pyrrolidone
+C1CCOC1,tetrahydrofuran
+O1CCOCC1,1,4-dioxane
+C1COCO1,1,3-dioxolane
+COCCOC,1,2-dimethoxyethane
+COCCOCCOC,diglyme
+COCCO,2-methoxyethanol
+CC(C)CO,isobutanol
+CC(C)OC(C)C,diisopropyl ether
+CCOCC,diethyl ether
+COC(C)(C)C,methyl tert-butyl ether
+CCOC(=O)C,ethyl acetate
+CC(C)OC(=O)C,isopropyl acetate
+CCOC(=O)CC,ethyl propionate
+CC(=O)C,acetone
+CCC(C)=O,2-butanone
+ClCCl,dichloromethane
+ClCCCl,1,2-dichloroethane
+ClC(Cl)Cl,chloroform
+ClC(Cl)(Cl)Cl,carbon tetrachloride
+c1ccccc1,benzene
+Cc1ccccc1,toluene
+CCc1ccccc1,ethylbenzene
+CC(C)c1ccccc1,cumene
+c1ccncc1,pyridine
+N#Cc1ccccc1,benzonitrile
+C1CCCC1,cyclopentane
+C1CCCCC1,cyclohexane
+CC1CCCCC1,methylcyclohexane
+CCCCC,pentane
+CCCCCC,hexane
+CCCCCCC,heptane
+CCCCCCCC,octane
+c1ccc(cc1)Cl,chlorobenzene
+c1ccc(cc1)F,fluorobenzene
+CC1CCCO1,2-methyltetrahydrofuran

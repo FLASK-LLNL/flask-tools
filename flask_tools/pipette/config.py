@@ -1,0 +1,285 @@
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from enum import StrEnum
+from pathlib import Path
+from typing import Any, Literal
+
+import yaml
+
+from pipette.constants import DEFAULT_LLM_BASE_URL, resolve_llm_base_url
+
+
+def package_data_path(filename: str) -> Path:
+    return Path(__file__).with_name("data") / filename
+
+
+def package_config_path(filename: str) -> Path:
+    return Path(__file__).with_name("assets") / filename
+
+
+def _validate_mapping_format(data: object, *, context: str) -> dict[str, Any]:
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        raise ValueError(f"{context} must be a mapping.")
+    return data
+
+
+def _resolve_optional_path(path_value: object, *, base_dir: Path) -> Path | None:
+    if path_value is None:
+        return None
+    if not isinstance(path_value, str):
+        raise ValueError("Path values in PipetteConfig YAML must be strings.")
+
+    candidate = Path(path_value).expanduser()
+    if not candidate.is_absolute():
+        candidate = (base_dir / candidate).resolve()
+    return candidate
+
+
+@dataclass
+class RulesConfig:
+    stop_on_hard_fail: bool = True
+    mass_tolerance_atoms: int = 0
+    reaction_energy_max_ev_mol: float = (
+        0.5  # Permissive. Most rxns are below 0, but some that need heating up can be positive
+    )
+    enable_fake_dft: bool = False
+
+    # All the from_mapping() is annoying, could this be better?
+    @classmethod
+    def from_mapping(cls, data: object) -> RulesConfig:
+        mapping = _validate_mapping_format(data, context="rules")
+        return cls(
+            stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
+            mass_tolerance_atoms=mapping.get(
+                "mass_tolerance_atoms", cls.mass_tolerance_atoms
+            ),
+            reaction_energy_max_ev_mol=mapping.get(
+                "reaction_energy_max_ev_mol", cls.reaction_energy_max_ev_mol
+            ),
+            enable_fake_dft=mapping.get("enable_fake_dft", cls.enable_fake_dft),
+        )
+
+
+@dataclass
+class LLMJudgeConfig:
+    allow_fail: Literal["all"] | list[str] = field(default_factory=list)
+    url: str = DEFAULT_LLM_BASE_URL
+    model: str = "gpt-5.4"
+    api_key: str | None = None
+    prompt_path: Path = field(default_factory=lambda: package_config_path("prompt.txt"))
+
+    @classmethod
+    def from_mapping(
+        cls,
+        data: object,
+        *,
+        base_dir: Path,
+    ) -> LLMJudgeConfig:
+        mapping = _validate_mapping_format(data, context="llm_judge")
+        allow_fail = mapping.get("allow_fail", [])
+        if allow_fail != "all":
+            if not isinstance(allow_fail, list) or not all(
+                isinstance(name, str) for name in allow_fail
+            ):
+                raise ValueError(
+                    "llm_judge.allow_fail must be 'all' or a list of tool names."
+                )
+        url = resolve_llm_base_url(mapping.get("url"))
+        if not isinstance(url, str):
+            raise ValueError("llm_judge.url must be a string.")
+
+        model = mapping.get("model", "gpt-5.4")
+        if not isinstance(model, str):
+            raise ValueError("llm_judge.model must be a string.")
+
+        api_key = mapping.get("api_key")
+        if api_key is not None and not isinstance(api_key, str):
+            raise ValueError("llm_judge.api_key must be a string when provided.")
+
+        prompt_path = _resolve_optional_path(
+            mapping.get("prompt_path"), base_dir=base_dir
+        )
+        return cls(
+            allow_fail=allow_fail if allow_fail == "all" else list(allow_fail),
+            url=url,
+            model=model,
+            api_key=api_key,
+            prompt_path=prompt_path or package_config_path("prompt.txt"),
+        )
+
+
+@dataclass
+class LLMReactionFixerConfig:
+    enabled: bool = True
+    model: str = "gpt-5.4"
+    api_key: str | None = None
+
+    @classmethod
+    def from_mapping(cls, data: object) -> LLMReactionFixerConfig:
+        mapping = _validate_mapping_format(data, context="llm_reaction_fixer")
+        enabled = mapping.get("enabled", cls.enabled)
+        if not isinstance(enabled, bool):
+            raise ValueError("llm_reaction_fixer.enabled must be a boolean.")
+
+        model = mapping.get("model", cls.model)
+        if not isinstance(model, str):
+            raise ValueError("llm_reaction_fixer.model must be a string.")
+
+        api_key = mapping.get("api_key")
+        if api_key is not None and not isinstance(api_key, str):
+            raise ValueError(
+                "llm_reaction_fixer.api_key must be a string when provided."
+            )
+
+        return cls(
+            enabled=enabled,
+            model=model,
+            api_key=api_key,
+        )
+
+
+@dataclass
+class ReactionEnergyConfig:
+    database: Path | None = None
+
+    @classmethod
+    def from_mapping(
+        cls,
+        data: object,
+        *,
+        base_dir: Path,
+    ) -> ReactionEnergyConfig:
+        mapping = _validate_mapping_format(
+            data, context="tools_setting.reaction_energy"
+        )
+        return cls(
+            database=_resolve_optional_path(mapping.get("database"), base_dir=base_dir),
+        )
+
+
+@dataclass
+class ToolsConfig:
+    reaction_energy: ReactionEnergyConfig = field(default_factory=ReactionEnergyConfig)
+
+    @classmethod
+    def from_mapping(
+        cls,
+        data: object,
+        *,
+        base_dir: Path,
+    ) -> ToolsConfig:
+        mapping = _validate_mapping_format(data, context="tools_setting")
+        return cls(
+            reaction_energy=ReactionEnergyConfig.from_mapping(
+                mapping.get("reaction_energy"),
+                base_dir=base_dir,
+            )
+        )
+
+
+@dataclass
+class PipetteConfig:
+    mode: str = "exact"
+    tool_list: str | list[str] = "all"
+    llm_judge: LLMJudgeConfig = field(default_factory=LLMJudgeConfig)
+    llm_reaction_fixer: LLMReactionFixerConfig = field(
+        default_factory=LLMReactionFixerConfig
+    )
+    rules: RulesConfig = field(default_factory=RulesConfig)
+    tools_setting: ToolsConfig = field(default_factory=ToolsConfig)
+    solvent_catalog_path: Path = field(
+        default_factory=lambda: package_data_path("solvents.csv")
+    )
+    solvent_commonness_path: Path = field(
+        default_factory=lambda: package_data_path("solvent_commonness.csv")
+    )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        data: object,
+        *,
+        base_dir: Path | None = None,
+    ) -> PipetteConfig:
+        mapping = _validate_mapping_format(data, context="PipetteConfig")
+        resolved_base_dir = base_dir or Path.cwd()
+
+        tool_list = mapping.get("tool_list", "all")
+        if tool_list != "all":
+            if not isinstance(tool_list, list) or not all(
+                isinstance(name, str) for name in tool_list
+            ):
+                raise ValueError("tool_list must be 'all' or a list of tool names.")
+            tool_list = list(tool_list)
+
+        solvent_catalog_path = _resolve_optional_path(
+            mapping.get("solvent_catalog_path"),
+            base_dir=resolved_base_dir,
+        )
+        solvent_commonness_path = _resolve_optional_path(
+            mapping.get("solvent_commonness_path"),
+            base_dir=resolved_base_dir,
+        )
+
+        return cls(
+            mode=mapping.get("mode", "exact"),
+            tool_list=tool_list,
+            llm_judge=LLMJudgeConfig.from_mapping(
+                mapping.get("llm_judge"),
+                base_dir=resolved_base_dir,
+            ),
+            llm_reaction_fixer=LLMReactionFixerConfig.from_mapping(
+                mapping.get("llm_reaction_fixer"),
+            ),
+            rules=RulesConfig.from_mapping(mapping.get("rules")),
+            tools_setting=ToolsConfig.from_mapping(
+                mapping.get("tools_setting"),
+                base_dir=resolved_base_dir,
+            ),
+            solvent_catalog_path=solvent_catalog_path
+            or package_data_path("solvents.csv"),
+            solvent_commonness_path=solvent_commonness_path
+            or package_data_path("solvent_commonness.csv"),
+        )
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> PipetteConfig:
+        config_path = Path(path).expanduser().resolve()
+        with config_path.open(encoding="utf-8") as handle:
+            data = yaml.safe_load(handle)
+        return cls.from_mapping(data, base_dir=config_path.parent)
+
+    @classmethod
+    def exact_default_path(cls) -> Path:
+        return package_config_path("exact.yaml")
+
+    @classmethod
+    def ai_default_path(cls) -> Path:
+        return package_config_path("ai_judge.yaml")
+
+    @classmethod
+    def from_default_exact_yaml(cls) -> PipetteConfig:
+        return cls.from_yaml(cls.exact_default_path())
+
+    @classmethod
+    def from_default_ai_yaml(cls) -> PipetteConfig:
+        return cls.from_yaml(cls.ai_default_path())
+
+
+def load_config(config_arg: str) -> PipetteConfig:
+    if config_arg == ConfigType.LLM_JUDGE:
+        return PipetteConfig.from_default_ai_yaml()
+    elif config_arg == ConfigType.LLM_JUDGE_NO_DFT:
+        return PipetteConfig.from_yaml(package_config_path("ai_judge_no_dft.yaml"))
+    elif config_arg == ConfigType.DEFAULT_EXACT:
+        return PipetteConfig.from_default_exact_yaml()
+    return PipetteConfig.from_yaml(config_arg)
+
+
+class ConfigType(StrEnum):
+    DEFAULT_EXACT = "default-exact"
+    LLM_JUDGE = "llm-judge"
+    LLM_JUDGE_NO_DFT = "llm-judge-no-dft"

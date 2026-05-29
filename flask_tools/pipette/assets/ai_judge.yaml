@@ -1,0 +1,13 @@
+mode: ai
+tool_list: all
+tools_setting:
+  reaction_energy:
+    database: ../data/fake_fake_molecule_energies.csv
+llm_judge:
+  allow_fail:
+    - exact_match
+rules:
+  stop_on_hard_fail: true
+  mass_tolerance_atoms: 0
+  reaction_energy_max_ev_mol: 5.0
+  enable_fake_dft: false
