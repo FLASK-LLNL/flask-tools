@@ -5,18 +5,17 @@ import hashlib
 import threading
 from typing import TYPE_CHECKING, Any, Awaitable
 
-from charge.clients.agent_factory import AgentFactory
-from charge.clients.agentframework import AgentFrameworkBackend
-from charge.experiments.experiment import Experiment
+from charge.clients.autogen import AutoGenBackend
 from charge.tasks.task import Task
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from charge.clients.agent_factory import Agent
+    from charge.clients.autogen import AutoGenAgent
 
 
 _CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
 _BACKEND_REGISTRY_LOCK = threading.Lock()
+_BACKEND_CACHE: dict[str, AutoGenBackend] = {}
 
 
 def _get_field(value: object, field_name: str) -> object:
@@ -42,26 +41,22 @@ def _backend_alias(*, model: str, api_key: str, url: str | None) -> str:
     return f"pipette_llm_{digest[:16]}"
 
 
-def ensure_charge_backend_registered(
+def get_autogen_backend(
     *,
     model: str,
     api_key: str,
     url: str | None = None,
-) -> str:
+) -> AutoGenBackend:
     alias = _backend_alias(model=model, api_key=api_key, url=url)
     with _BACKEND_REGISTRY_LOCK:
-        if alias not in AgentFactory.backends:
-            AgentFactory.register_backend(
-                alias,
-                AgentFrameworkBackend(
-                    model=model,
-                    backend="openai",
-                    api_key=api_key,
-                    base_url=_resolve_base_url(url),
-                    use_responses_api=True,
-                ),
+        if alias not in _BACKEND_CACHE:
+            _BACKEND_CACHE[alias] = AutoGenBackend(
+                model=model,
+                backend="openai",
+                api_key=api_key,
+                base_url=_resolve_base_url(url),
             )
-    return alias
+    return _BACKEND_CACHE[alias]
 
 
 async def query_task_async(
@@ -72,7 +67,6 @@ async def query_task_async(
     api_key: str,
     url: str | None = None,
     structured_output_schema: type[BaseModel] | None = None,
-    experiment: Experiment | None = None,
     agent_name: str = "Pipette",
     max_retries: int = 1,
     max_tool_calls: int = 1,
@@ -82,21 +76,18 @@ async def query_task_async(
         user_prompt=user_prompt,
         structured_output_schema=structured_output_schema,
     )
-    task_experiment = experiment or Experiment(task=None)
-    backend_name = ensure_charge_backend_registered(
+    backend = get_autogen_backend(
         model=model,
         api_key=api_key,
         url=url,
     )
-    agent: Agent = task_experiment.create_agent_with_experiment_state(
+    agent: AutoGenAgent = backend.create_agent(
         task=task,
-        backend=backend_name,
         agent_name=agent_name,
         max_retries=max_retries,
         max_tool_calls=max_tool_calls,
     )
     result = await agent.run()
-    task_experiment.add_to_context(agent, task, result)
     return str(result)
 
 
@@ -172,7 +163,6 @@ def query_task(
     api_key: str,
     url: str | None = None,
     structured_output_schema: type[BaseModel] | None = None,
-    experiment: Experiment | None = None,
     agent_name: str = "Pipette",
     max_retries: int = 1,
     max_tool_calls: int = 1,
@@ -185,7 +175,6 @@ def query_task(
             api_key=api_key,
             url=url,
             structured_output_schema=structured_output_schema,
-            experiment=experiment,
             agent_name=agent_name,
             max_retries=max_retries,
             max_tool_calls=max_tool_calls,

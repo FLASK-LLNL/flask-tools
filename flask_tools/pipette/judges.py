@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Literal
 
-from charge.experiments.experiment import Experiment
 from pydantic import BaseModel
 
 from .config import PipetteConfig
@@ -15,7 +14,7 @@ from .constants import (
     ToolResult,
     resolve_llm_api_key,
 )
-from .llm_query import query_task
+from .llm_query import query_task, query_task_async
 
 
 class ReactionGradeResponse(BaseModel):
@@ -108,12 +107,12 @@ class LLMJudge:
             comment=parsed.comment,
         )
 
-    def judge(
+    async def judge_async(
         self,
         rxn_smiles: str,
         results: list[ToolResult],
         *,
-        experiment: Experiment | None = None,
+        experiment: object | None = None,
     ) -> ReactionGrade:
         messages = self._build_messages(rxn_smiles, results)
         if self.client is not None:
@@ -125,14 +124,43 @@ class LLMJudge:
                 messages=messages,
             )
         else:
-            response_text = query_task(
+            response_text = await query_task_async(
                 system_prompt=messages[0]["content"],
                 user_prompt=messages[1]["content"],
                 model=self.model,
                 api_key=self.api_key,
                 url=self.url,
                 structured_output_schema=ReactionGradeResponse,
-                experiment=experiment,
                 agent_name="PipetteJudge",
             )
+        return self._parse_reaction_grade(response_text, results)
+
+    def judge(
+        self,
+        rxn_smiles: str,
+        results: list[ToolResult],
+        *,
+        experiment: object | None = None,
+    ) -> ReactionGrade:
+        if self.client is not None:
+            messages = self._build_messages(rxn_smiles, results)
+            from .llm_query import query_messages
+
+            response_text = query_messages(
+                client=self.client,
+                model=self.model,
+                messages=messages,
+            )
+            return self._parse_reaction_grade(response_text, results)
+
+        messages = self._build_messages(rxn_smiles, results)
+        response_text = query_task(
+            system_prompt=messages[0]["content"],
+            user_prompt=messages[1]["content"],
+            model=self.model,
+            api_key=self.api_key,
+            url=self.url,
+            structured_output_schema=ReactionGradeResponse,
+            agent_name="PipetteJudge",
+        )
         return self._parse_reaction_grade(response_text, results)

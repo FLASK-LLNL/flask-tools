@@ -5,12 +5,11 @@ from dataclasses import dataclass
 import json
 from typing import Any
 
-from charge.experiments.experiment import Experiment
 from pydantic import BaseModel
 
 from .config import PipetteConfig
 from .constants import ToolResult, resolve_llm_api_key
-from .llm_query import query_task
+from .llm_query import query_task, query_task_async
 from .smiles import (
     canonicalize_reaction_smiles,
     canonicalize_smiles,
@@ -155,7 +154,7 @@ class LLMReactionFixer:
         rxn_smiles: str,
         results: list[ToolResult],
         *,
-        experiment: Experiment | None = None,
+        experiment: object | None = None,
     ) -> ReactionFix:
         user_prompt = json.dumps(
             self._build_user_payload(rxn_smiles, results),
@@ -181,7 +180,46 @@ class LLMReactionFixer:
                 api_key=self.api_key,
                 url=self.url,
                 structured_output_schema=ReactionFixResponse,
-                experiment=experiment,
+                agent_name="PipetteFixer",
+            )
+        try:
+            return self._parse_reaction_fix(rxn_smiles, response_text)
+        except Exception as exc:
+            raise ValueError(
+                f"Reaction fixer failed to parse response: {exc} for {rxn_smiles} with response {response_text}"
+            ) from exc
+
+    async def fix_async(
+        self,
+        rxn_smiles: str,
+        results: list[ToolResult],
+        *,
+        experiment: object | None = None,
+    ) -> ReactionFix:
+        user_prompt = json.dumps(
+            self._build_user_payload(rxn_smiles, results),
+            indent=2,
+            sort_keys=True,
+        )
+        if self.client is not None:
+            from .llm_query import query_messages
+
+            response_text = query_messages(
+                client=self.client,
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        else:
+            response_text = await query_task_async(
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                model=self.model,
+                api_key=self.api_key,
+                url=self.url,
+                structured_output_schema=ReactionFixResponse,
                 agent_name="PipetteFixer",
             )
         try:
