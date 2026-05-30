@@ -4,6 +4,8 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 import traceback
 
+from charge.experiments.experiment import Experiment
+
 from .config import PipetteConfig
 from .verifiers import (
     BasicSmilesValidationChecker,
@@ -161,12 +163,22 @@ class GradingPipeline:
         self,
         rxn_smiles: str,
         context: dict[str, ToolResult],
+        experiment: Experiment,
     ) -> tuple[ToolResult, str | None] | None:
         if self.reaction_fixer is None:
             return None
 
         try:
-            fix = self.reaction_fixer.fix(rxn_smiles, list(context.values()))
+            try:
+                fix = self.reaction_fixer.fix(
+                    rxn_smiles,
+                    list(context.values()),
+                    experiment=experiment,
+                )
+            except TypeError as exc:
+                if "experiment" not in str(exc):
+                    raise
+                fix = self.reaction_fixer.fix(rxn_smiles, list(context.values()))
         except Exception as exc:
             return (
                 ToolResult(
@@ -200,9 +212,10 @@ class GradingPipeline:
         rxn_smiles: str,
         context: dict[str, ToolResult],
         prefix_results: list[tuple[str, str, ToolResult]],
+        experiment: Experiment,
     ) -> ReactionGrade:
-        """Grading happens without the prefix_results. For example, LLM reaction fixed results will have the original
-        in the prefix_results, and the tool results on the old reaction will not be used for grading.
+        """Exact grading happens without the prefix_results, namely the results before llm-fix of rxn balance.
+        AI grading does use it, because it should be smart enough to deal with it.
         """
         if self.config.mode == "exact":
             res = apply_exact_rules(list(context.values()))
@@ -214,10 +227,20 @@ class GradingPipeline:
         if self.config.mode == "ai":
             if self.judge is None:
                 raise ValueError("AI mode requires an LLM judge implementation.")
-            res = self.judge.judge(
-                rxn_smiles,
-                list(context.values()),
-            )
+
+            try:
+                res = self.judge.judge(
+                    rxn_smiles,
+                    [pr[-1] for pr in prefix_results] + list(context.values()),
+                    experiment=experiment,
+                )
+            except TypeError as exc:
+                if "experiment" not in str(exc):
+                    raise
+                res = self.judge.judge(
+                    rxn_smiles,
+                    [pr[-1] for pr in prefix_results] + list(context.values()),
+                )
             assert res is not None
             res = self._with_prefix_results(res, prefix_results)
             assert isinstance(res, ReactionGrade)
@@ -232,12 +255,14 @@ class GradingPipeline:
         *,
         fix_attempted: bool = False,
         prefix_results: list[tuple[str, str, ToolResult]] | None = None,
+        experiment: Experiment | None = None,
     ) -> ReactionGrade | PendingReaction:
         """
         tiered_run: Will return None if there are long-running checks in the pipeline without cached result
         prefix_results: grade_one can be called twice for one reaction if tiered_run is True. In that case, the tool
             results from the first call will be passed in here.
         """
+        task_experiment = experiment or Experiment(task=None)
         prefix = list(prefix_results or [])
         prefix_smiles_checkers = {
             (smi, checker_name): res for smi, checker_name, res in prefix
@@ -298,7 +323,11 @@ class GradingPipeline:
             ):
                 if (rxn_smiles, "llm_reaction_fix") in prefix_smiles_checkers:
                     raise RuntimeError("llm_reaction_fix already ran")
-                fix_attempt = self._attempt_llm_fix(rxn_smiles, context)
+                fix_attempt = self._attempt_llm_fix(
+                    rxn_smiles,
+                    context,
+                    task_experiment,
+                )
                 if fix_attempt is not None:
                     fix_result, fixed_rxn_smiles = fix_attempt
                     if fixed_rxn_smiles is None:
@@ -312,9 +341,10 @@ class GradingPipeline:
                                 *prefix,
                                 (rxn_smiles, "llm_reaction_fix", fix_result),
                             ],
+                            experiment=task_experiment,
                         )
 
-        return self._finalize_grade(rxn_smiles, context, prefix)
+        return self._finalize_grade(rxn_smiles, context, prefix, task_experiment)
 
     def grade(
         self, rxn_smiles_list: list[str], tiered_run=True

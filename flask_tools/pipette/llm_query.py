@@ -1,14 +1,22 @@
 from __future__ import annotations
 
-from typing import Any
+import asyncio
+import hashlib
+import threading
+from typing import TYPE_CHECKING, Any, Awaitable
 
-try:
-    from openai import OpenAI
-except ImportError:  # pragma: no cover - exercised through availability checks.
-    OpenAI = None
+from charge.clients.agent_factory import AgentFactory
+from charge.clients.agentframework import AgentFrameworkBackend
+from charge.experiments.experiment import Experiment
+from charge.tasks.task import Task
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from charge.clients.agent_factory import Agent
 
 
 _CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
+_BACKEND_REGISTRY_LOCK = threading.Lock()
 
 
 def _get_field(value: object, field_name: str) -> object:
@@ -27,21 +35,69 @@ def _resolve_base_url(url: str | None) -> str | None:
     return trimmed
 
 
-def create_openai_client(
+def _backend_alias(*, model: str, api_key: str, url: str | None) -> str:
+    digest = hashlib.sha256(
+        f"{model}\0{api_key}\0{_resolve_base_url(url) or ''}".encode("utf-8")
+    ).hexdigest()
+    return f"pipette_llm_{digest[:16]}"
+
+
+def ensure_charge_backend_registered(
     *,
+    model: str,
     api_key: str,
     url: str | None = None,
-    client: OpenAI | None = None,
-) -> OpenAI:
-    if client is not None:
-        return client
-    if OpenAI is None:
-        raise RuntimeError("The openai package is required for LLM queries.")
+) -> str:
+    alias = _backend_alias(model=model, api_key=api_key, url=url)
+    with _BACKEND_REGISTRY_LOCK:
+        if alias not in AgentFactory.backends:
+            AgentFactory.register_backend(
+                alias,
+                AgentFrameworkBackend(
+                    model=model,
+                    backend="openai",
+                    api_key=api_key,
+                    base_url=_resolve_base_url(url),
+                    use_responses_api=True,
+                ),
+            )
+    return alias
 
-    base_url = _resolve_base_url(url)
-    if base_url:
-        return OpenAI(api_key=api_key, base_url=base_url)
-    return OpenAI(api_key=api_key)
+
+async def query_task_async(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    model: str,
+    api_key: str,
+    url: str | None = None,
+    structured_output_schema: type[BaseModel] | None = None,
+    experiment: Experiment | None = None,
+    agent_name: str = "Pipette",
+    max_retries: int = 1,
+    max_tool_calls: int = 1,
+) -> str:
+    task = Task(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        structured_output_schema=structured_output_schema,
+    )
+    task_experiment = experiment or Experiment(task=None)
+    backend_name = ensure_charge_backend_registered(
+        model=model,
+        api_key=api_key,
+        url=url,
+    )
+    agent: Agent = task_experiment.create_agent_with_experiment_state(
+        task=task,
+        backend=backend_name,
+        agent_name=agent_name,
+        max_retries=max_retries,
+        max_tool_calls=max_tool_calls,
+    )
+    result = await agent.run()
+    task_experiment.add_to_context(agent, task, result)
+    return str(result)
 
 
 def extract_message_text(response: object) -> str:
@@ -73,7 +129,7 @@ def extract_message_text(response: object) -> str:
 
 def query_messages(
     *,
-    client: OpenAI,
+    client: Any,
     model: str,
     messages: list[dict[str, str]],
 ) -> str:
@@ -82,3 +138,56 @@ def query_messages(
         messages=messages,
     )
     return extract_message_text(response)
+
+
+def _run_coroutine_sync(coro: Awaitable[str]) -> str:
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+
+    result: dict[str, str] = {}
+    error: dict[str, BaseException] = {}
+
+    def runner() -> None:
+        try:
+            result["value"] = asyncio.run(coro)
+        except BaseException as exc:  # pragma: no cover - only hit inside active loop.
+            error["value"] = exc
+
+    thread = threading.Thread(target=runner, daemon=True)
+    thread.start()
+    thread.join()
+
+    if "value" in error:
+        raise error["value"]
+    return result["value"]
+
+
+def query_task(
+    *,
+    system_prompt: str,
+    user_prompt: str,
+    model: str,
+    api_key: str,
+    url: str | None = None,
+    structured_output_schema: type[BaseModel] | None = None,
+    experiment: Experiment | None = None,
+    agent_name: str = "Pipette",
+    max_retries: int = 1,
+    max_tool_calls: int = 1,
+) -> str:
+    return _run_coroutine_sync(
+        query_task_async(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            model=model,
+            api_key=api_key,
+            url=url,
+            structured_output_schema=structured_output_schema,
+            experiment=experiment,
+            agent_name=agent_name,
+            max_retries=max_retries,
+            max_tool_calls=max_tool_calls,
+        )
+    )

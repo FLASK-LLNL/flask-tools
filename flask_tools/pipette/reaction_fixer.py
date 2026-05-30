@@ -3,10 +3,14 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 import json
+from typing import Any
+
+from charge.experiments.experiment import Experiment
+from pydantic import BaseModel
 
 from .config import PipetteConfig
 from .constants import ToolResult, resolve_llm_api_key
-from .llm_query import OpenAI, create_openai_client, query_messages
+from .llm_query import query_task
 from .smiles import (
     canonicalize_reaction_smiles,
     canonicalize_smiles,
@@ -40,18 +44,29 @@ class ReactionFix:
     reasoning_summary: str
 
 
+class ReactionFixResponse(BaseModel):
+    fixed_reaction_smiles: str
+    comment: str = ""
+
+
 class LLMReactionFixer:
     def __init__(
-        self, *, model: str, url: str, api_key: str, client: OpenAI | None = None
+        self,
+        *,
+        model: str,
+        url: str,
+        api_key: str,
+        client: object | None = None,
     ) -> None:
         self.model = model
         self.api_key = api_key
-        self.client = create_openai_client(url=url, api_key=api_key, client=client)
+        self.url = url
+        self.client = client
 
     @classmethod
     def from_config(cls, config: PipetteConfig) -> LLMReactionFixer | None:
         fixer_config = config.llm_reaction_fixer
-        if not fixer_config.enabled or OpenAI is None:
+        if not fixer_config.enabled:
             return None
 
         api_key = resolve_llm_api_key(fixer_config.api_key)
@@ -84,30 +99,14 @@ class LLMReactionFixer:
         self, original_reaction_smiles: str, response_text: str
     ) -> ReactionFix:
         try:
-            parsed = json.loads(response_text)
-        except json.JSONDecodeError as exc:
+            parsed = ReactionFixResponse.model_validate_json(response_text)
+        except Exception as exc:
             raise ValueError(
                 f"Reaction fixer did not return valid JSON: {response_text}"
             ) from exc
 
-        if not isinstance(parsed, dict):
-            raise ValueError("Reaction fixer response JSON must be an object.")
-
-        fixed_reaction_smiles = parsed.get("fixed_reaction_smiles")
-        if (
-            not isinstance(fixed_reaction_smiles, str)
-            or not fixed_reaction_smiles.strip()
-        ):
-            raise ValueError(
-                "Reaction fixer response must include a string fixed_reaction_smiles."
-            )
-
-        comment = parsed.get("comment", "")
-        if not isinstance(comment, str):
-            raise ValueError("Reaction fixer response comment must be a string.")
-
         canonical_fixed = canonicalize_reaction_smiles(
-            fixed_reaction_smiles.strip(), include_agents=True
+            parsed.fixed_reaction_smiles.strip(), include_agents=True
         )
         original_reactants, original_agents, original_products = split_reaction_smiles(
             canonicalize_reaction_smiles(original_reaction_smiles, include_agents=True)
@@ -130,37 +129,61 @@ class LLMReactionFixer:
                 self._canonical_component_list(fixed_products),
                 self._canonical_component_list(original_products),
             ),
-            reasoning_summary=comment,
+            reasoning_summary=parsed.comment,
         )
 
-    def fix(self, rxn_smiles: str, results: list[ToolResult]) -> ReactionFix:
+    @staticmethod
+    def _build_user_payload(
+        rxn_smiles: str,
+        results: list[ToolResult],
+    ) -> dict[str, Any]:
         serialized_results = [r.to_json_dict() for r in results]
         for s in serialized_results:
             del s["skipped_reason"]
+        return {
+            "reaction_smiles": rxn_smiles,
+            "tool_results": serialized_results,
+            "instructions": (
+                "Return a repaired reaction SMILES that removes agents and adds "
+                "missing byproducts or counter-species on either side when needed. "
+                "If no credible repair is possible, return the original reaction_smiles."
+            ),
+        }
 
-        response_text = query_messages(
-            client=self.client,
-            model=self.model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": json.dumps(
-                        {
-                            "reaction_smiles": rxn_smiles,
-                            "tool_results": serialized_results,
-                            "instructions": (
-                                "Return a repaired reaction SMILES that removes agents and adds "
-                                "missing byproducts or counter-species on either side when needed. "
-                                "If no credible repair is possible, return the original reaction_smiles."
-                            ),
-                        },
-                        indent=2,
-                        sort_keys=True,
-                    ),
-                },
-            ],
+    def fix(
+        self,
+        rxn_smiles: str,
+        results: list[ToolResult],
+        *,
+        experiment: Experiment | None = None,
+    ) -> ReactionFix:
+        user_prompt = json.dumps(
+            self._build_user_payload(rxn_smiles, results),
+            indent=2,
+            sort_keys=True,
         )
+        if self.client is not None:
+            from .llm_query import query_messages
+
+            response_text = query_messages(
+                client=self.client,
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+        else:
+            response_text = query_task(
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=user_prompt,
+                model=self.model,
+                api_key=self.api_key,
+                url=self.url,
+                structured_output_schema=ReactionFixResponse,
+                experiment=experiment,
+                agent_name="PipetteFixer",
+            )
         try:
             return self._parse_reaction_fix(rxn_smiles, response_text)
         except Exception as exc:

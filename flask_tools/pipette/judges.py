@@ -2,6 +2,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Literal
+
+from charge.experiments.experiment import Experiment
+from pydantic import BaseModel
 
 from .config import PipetteConfig
 from .constants import (
@@ -11,7 +15,13 @@ from .constants import (
     ToolResult,
     resolve_llm_api_key,
 )
-from .llm_query import OpenAI, create_openai_client, query_messages
+from .llm_query import query_task
+
+
+class ReactionGradeResponse(BaseModel):
+    final_grade: Literal["likely", "possible", "uncertain", "unlikely", "impossible"]
+    short_reason: str = "ai.llm_judge"
+    comment: str = ""
 
 
 class LLMJudge:
@@ -22,13 +32,13 @@ class LLMJudge:
         model: str,
         api_key: str,
         prompt_path: Path,
-        client: OpenAI | None = None,
+        client: object | None = None,
     ) -> None:
         self.url = url
         self.model = model
         self.api_key = api_key
         self.prompt_path = prompt_path
-        self.client = create_openai_client(url=url, api_key=api_key, client=client)
+        self.client = client
 
     @classmethod
     def from_config(cls, config: PipetteConfig) -> LLMJudge:
@@ -39,8 +49,6 @@ class LLMJudge:
                 + ", ".join(LLM_API_KEY_ENV_VARS)
                 + "."
             )
-        if OpenAI is None:
-            raise RuntimeError("The openai package is required for AI judge mode.")
         return cls(
             url=config.llm_judge.url,
             model=config.llm_judge.model,
@@ -80,49 +88,51 @@ class LLMJudge:
         results: list[ToolResult],
     ) -> ReactionGrade:
         try:
-            parsed = json.loads(response_text)
-        except json.JSONDecodeError as exc:
+            parsed = ReactionGradeResponse.model_validate_json(response_text)
+        except Exception as exc:
             raise ValueError(
                 f"LLM judge did not return valid JSON: {response_text}"
             ) from exc
 
-        if not isinstance(parsed, dict):
-            raise ValueError("LLM judge response JSON must be an object.")
-
-        final_grade_value = parsed.get("final_grade")
-        if not isinstance(final_grade_value, str):
-            raise ValueError("LLM judge response must include a string final_grade.")
-
         try:
-            final_grade = FinalGrade(final_grade_value)
+            final_grade = FinalGrade(parsed.final_grade)
         except ValueError as exc:
             raise ValueError(
-                f"LLM judge returned unsupported final_grade: {final_grade_value!r}"
+                f"LLM judge returned unsupported final_grade: {parsed.final_grade!r}"
             ) from exc
-
-        short_reason = parsed.get("short_reason", "ai.llm_judge")
-        if not isinstance(short_reason, str):
-            raise ValueError("LLM judge response short_reason must be a string.")
-
-        comment = parsed.get("comment", "")
-        if not isinstance(comment, str):
-            raise ValueError("LLM judge response comment must be a string.")
 
         return ReactionGrade(
             final_grade=final_grade,
-            short_reason=short_reason,
+            short_reason=parsed.short_reason,
             results=list(results),
-            comment=comment,
+            comment=parsed.comment,
         )
 
     def judge(
         self,
         rxn_smiles: str,
         results: list[ToolResult],
+        *,
+        experiment: Experiment | None = None,
     ) -> ReactionGrade:
-        response_text = query_messages(
-            client=self.client,
-            model=self.model,
-            messages=self._build_messages(rxn_smiles, results),
-        )
+        messages = self._build_messages(rxn_smiles, results)
+        if self.client is not None:
+            from .llm_query import query_messages
+
+            response_text = query_messages(
+                client=self.client,
+                model=self.model,
+                messages=messages,
+            )
+        else:
+            response_text = query_task(
+                system_prompt=messages[0]["content"],
+                user_prompt=messages[1]["content"],
+                model=self.model,
+                api_key=self.api_key,
+                url=self.url,
+                structured_output_schema=ReactionGradeResponse,
+                experiment=experiment,
+                agent_name="PipetteJudge",
+            )
         return self._parse_reaction_grade(response_text, results)
