@@ -18,11 +18,11 @@ def package_config_path(filename: str) -> Path:
     return Path(__file__).with_name("assets") / filename
 
 
-def _validate_mapping_format(data: object, *, context: str) -> dict[str, Any]:
+def _validate_mapping_format(data: object, *, name: str) -> dict[str, Any]:
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise ValueError(f"{context} must be a mapping.")
+        raise ValueError(f"{name} must be a mapping.")
     return data
 
 
@@ -50,7 +50,7 @@ class RulesConfig:
     # All the from_mapping() is annoying, could this be better?
     @classmethod
     def from_mapping(cls, data: object) -> RulesConfig:
-        mapping = _validate_mapping_format(data, context="rules")
+        mapping = _validate_mapping_format(data, name="rules")
         return cls(
             stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
             mass_tolerance_atoms=mapping.get(
@@ -69,7 +69,10 @@ class LLMJudgeConfig:
     url: str = DEFAULT_LLM_BASE_URL
     model: str = "gpt-5.4"
     api_key: str | None = None
-    prompt_path: Path = field(default_factory=lambda: package_config_path("prompt.txt"))
+    prompt_path: Path = field(
+        default_factory=lambda: package_config_path("judge-prompt.txt")
+    )
+    prompt: str | None = None
 
     @classmethod
     def from_mapping(
@@ -78,7 +81,7 @@ class LLMJudgeConfig:
         *,
         base_dir: Path,
     ) -> LLMJudgeConfig:
-        mapping = _validate_mapping_format(data, context="llm_judge")
+        mapping = _validate_mapping_format(data, name="llm_judge")
         allow_fail = mapping.get("allow_fail", [])
         if allow_fail != "all":
             if not isinstance(allow_fail, list) or not all(
@@ -99,6 +102,10 @@ class LLMJudgeConfig:
         if api_key is not None and not isinstance(api_key, str):
             raise ValueError("llm_judge.api_key must be a string when provided.")
 
+        prompt = mapping.get("prompt")
+        if prompt is not None and not isinstance(prompt, str):
+            raise ValueError("llm_judge.prompt must be a string when provided.")
+
         prompt_path = _resolve_optional_path(
             mapping.get("prompt_path"), base_dir=base_dir
         )
@@ -107,7 +114,8 @@ class LLMJudgeConfig:
             url=url,
             model=model,
             api_key=api_key,
-            prompt_path=prompt_path or package_config_path("prompt.txt"),
+            prompt_path=prompt_path or package_config_path("judge-prompt.txt"),
+            prompt=prompt,
         )
 
 
@@ -116,10 +124,19 @@ class LLMReactionFixerConfig:
     enabled: bool = True
     model: str = "gpt-5.4"
     api_key: str | None = None
+    prompt_path: Path = field(
+        default_factory=lambda: package_config_path("fixer-prompt.txt")
+    )
+    prompt: str | None = None
 
     @classmethod
-    def from_mapping(cls, data: object) -> LLMReactionFixerConfig:
-        mapping = _validate_mapping_format(data, context="llm_reaction_fixer")
+    def from_mapping(
+        cls,
+        data: object,
+        *,
+        base_dir: Path,
+    ) -> LLMReactionFixerConfig:
+        mapping = _validate_mapping_format(data, name="llm_reaction_fixer")
         enabled = mapping.get("enabled", cls.enabled)
         if not isinstance(enabled, bool):
             raise ValueError("llm_reaction_fixer.enabled must be a boolean.")
@@ -134,10 +151,22 @@ class LLMReactionFixerConfig:
                 "llm_reaction_fixer.api_key must be a string when provided."
             )
 
+        prompt = mapping.get("prompt")
+        if prompt is not None and not isinstance(prompt, str):
+            raise ValueError(
+                "llm_reaction_fixer.prompt must be a string when provided."
+            )
+
+        prompt_path = _resolve_optional_path(
+            mapping.get("prompt_path"), base_dir=base_dir
+        )
+
         return cls(
             enabled=enabled,
             model=model,
             api_key=api_key,
+            prompt_path=prompt_path or package_config_path("fixer-prompt.txt"),
+            prompt=prompt,
         )
 
 
@@ -152,9 +181,7 @@ class ReactionEnergyConfig:
         *,
         base_dir: Path,
     ) -> ReactionEnergyConfig:
-        mapping = _validate_mapping_format(
-            data, context="tools_setting.reaction_energy"
-        )
+        mapping = _validate_mapping_format(data, name="tools_setting.reaction_energy")
         return cls(
             database=_resolve_optional_path(mapping.get("database"), base_dir=base_dir),
         )
@@ -171,7 +198,7 @@ class ToolsConfig:
         *,
         base_dir: Path,
     ) -> ToolsConfig:
-        mapping = _validate_mapping_format(data, context="tools_setting")
+        mapping = _validate_mapping_format(data, name="tools_setting")
         return cls(
             reaction_energy=ReactionEnergyConfig.from_mapping(
                 mapping.get("reaction_energy"),
@@ -204,7 +231,7 @@ class PipetteConfig:
         *,
         base_dir: Path | None = None,
     ) -> PipetteConfig:
-        mapping = _validate_mapping_format(data, context="PipetteConfig")
+        mapping = _validate_mapping_format(data, name="PipetteConfig")
         resolved_base_dir = base_dir or Path.cwd()
 
         tool_list = mapping.get("tool_list", "all")
@@ -233,6 +260,7 @@ class PipetteConfig:
             ),
             llm_reaction_fixer=LLMReactionFixerConfig.from_mapping(
                 mapping.get("llm_reaction_fixer"),
+                base_dir=resolved_base_dir,
             ),
             rules=RulesConfig.from_mapping(mapping.get("rules")),
             tools_setting=ToolsConfig.from_mapping(

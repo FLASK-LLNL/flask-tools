@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 import json
+from pathlib import Path
 from typing import Any, TypeVar
 
 from pydantic import BaseModel
@@ -16,22 +17,8 @@ from .smiles import (
     split_reaction_smiles,
 )
 
-
-# The [H+] part is needed for caffeine, Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C
-SYSTEM_PROMPT = """You repair reaction SMILES for chemistry validation pipelines.
-
-Your job:
-- Remove non-participating agents from the middle section.
-- Balance the reaction by adding missing byproducts or counter-species to the reactant or product side when needed. Do not ignore [H+]
-- Preserve the main transformation instead of inventing a different reaction.
-- Return valid SMILES
-- Return exactly one JSON object with this schema:
-{
-  "fixed_reaction_smiles": "...",
-  "comment": "brief explanation"
-}
-- Do not return markdown or any text outside the JSON object.
-"""
+# Notes about the prompt:
+# The [H+] part is needed for rxns like caffeine, Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C
 
 
 @dataclass(frozen=True)
@@ -58,10 +45,14 @@ class BaseLLMReactionFixer:
         model: str,
         url: str,
         api_key: str,
+        prompt_path: Path,
+        prompt: str | None = None,
     ) -> None:
         self.model = model
         self.api_key = api_key
         self.url = url
+        self.prompt_path = prompt_path
+        self._prompt = prompt
 
     @classmethod
     def from_config(cls: type[_FixerT], config: PipetteConfig) -> _FixerT | None:
@@ -77,7 +68,15 @@ class BaseLLMReactionFixer:
             model=fixer_config.model,
             url=config.llm_judge.url,
             api_key=api_key,
+            prompt_path=fixer_config.prompt_path,
+            prompt=fixer_config.prompt,
         )
+
+    @property
+    def prompt(self) -> str:
+        if self._prompt is not None:
+            return self._prompt
+        return self.prompt_path.read_text(encoding="utf-8")
 
     @staticmethod
     def _canonical_component_list(side: str) -> list[str]:
@@ -163,7 +162,7 @@ class LLMReactionFixer(BaseLLMReactionFixer):
             sort_keys=True,
         )
         response_text = query_task(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=self.prompt,
             user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,
@@ -191,7 +190,7 @@ class AsyncLLMReactionFixer(BaseLLMReactionFixer):
             sort_keys=True,
         )
         response_text = await query_task_async(
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=self.prompt,
             user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,

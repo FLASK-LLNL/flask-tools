@@ -17,7 +17,7 @@ from .verifiers.base import Speed, CacheableReactionChecker
 from .judges import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus
 from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
-from .rules import apply_exact_rules
+from .exact_grading import apply_exact_rules
 from .smiles import canonicalize_reaction_smiles
 from .llm_query import _run_coroutine_sync
 

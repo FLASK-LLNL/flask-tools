@@ -34,11 +34,13 @@ class BaseLLMJudge:
         model: str,
         api_key: str,
         prompt_path: Path,
+        prompt: str | None = None,
     ) -> None:
         self.url = url
         self.model = model
         self.api_key = api_key
         self.prompt_path = prompt_path
+        self._prompt = prompt
 
     @classmethod
     def from_config(cls: type[_JudgeT], config: PipetteConfig) -> _JudgeT:
@@ -54,9 +56,13 @@ class BaseLLMJudge:
             model=config.llm_judge.model,
             api_key=api_key,
             prompt_path=config.llm_judge.prompt_path,
+            prompt=config.llm_judge.prompt,
         )
 
-    def _load_prompt(self) -> str:
+    @property
+    def prompt(self) -> str:
+        if self._prompt is not None:
+            return self._prompt
         return self.prompt_path.read_text(encoding="utf-8")
 
     def _serialize_results(self, results: list[ToolResult]) -> list[dict[str, object]]:
@@ -73,7 +79,7 @@ class BaseLLMJudge:
             "tool_results": self._serialize_results(results),
         }
         return [
-            {"role": "system", "content": self._load_prompt()},
+            {"role": "system", "content": self.prompt},
             {
                 "role": "user",
                 "content": json.dumps(
