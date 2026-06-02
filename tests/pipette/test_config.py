@@ -40,7 +40,6 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
               reaction_energy_max_ev_mol: 9.5
               enable_fake_dft: true
             solvent_catalog_path: solvents.csv
-            solvent_commonness_path: commonness.csv
             """
         ).strip()
         + "\n",
@@ -74,7 +73,6 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     assert config.rules.reaction_energy_max_ev_mol == 9.5
     assert config.rules.enable_fake_dft is True
     assert config.solvent_catalog_path == (tmp_path / "solvents.csv").resolve()
-    assert config.solvent_commonness_path == (tmp_path / "commonness.csv").resolve()
 
     judge = LLMJudge(
         url=config.llm_judge.url,

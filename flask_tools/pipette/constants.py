@@ -123,6 +123,7 @@ class ReactionGrade:
 
 @dataclass(frozen=True)
 class MissingProductRule:
+    # A molecule that is commonly missing from one side of a rxn. For example, a solvent may be on the left hand side.
     name: str
     smiles: str
     formula: dict[str, int]

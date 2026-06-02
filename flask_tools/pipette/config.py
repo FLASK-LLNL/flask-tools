@@ -220,9 +220,6 @@ class PipetteConfig:
     solvent_catalog_path: Path = field(
         default_factory=lambda: package_data_path("solvents.csv")
     )
-    solvent_commonness_path: Path = field(
-        default_factory=lambda: package_data_path("solvent_commonness.csv")
-    )
 
     @classmethod
     def from_mapping(
@@ -246,10 +243,6 @@ class PipetteConfig:
             mapping.get("solvent_catalog_path"),
             base_dir=resolved_base_dir,
         )
-        solvent_commonness_path = _resolve_optional_path(
-            mapping.get("solvent_commonness_path"),
-            base_dir=resolved_base_dir,
-        )
 
         return cls(
             mode=mapping.get("mode", "exact"),
@@ -269,8 +262,6 @@ class PipetteConfig:
             ),
             solvent_catalog_path=solvent_catalog_path
             or package_data_path("solvents.csv"),
-            solvent_commonness_path=solvent_commonness_path
-            or package_data_path("solvent_commonness.csv"),
         )
 
     @classmethod

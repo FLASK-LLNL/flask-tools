@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from flask_tools.pipette.config import PipetteConfig
+from flask_tools.pipette.config import PipetteConfig, ConfigType
 from flask_tools.pipette.grade_rxn import (
     _apply_debug_overrides,
     grade_reaction,
@@ -45,7 +45,7 @@ def test_grade_reaction_uses_default_exact_yaml_and_returns_batch(monkeypatch) -
         fake_build_default_pipeline,
     )
 
-    result = grade_reaction(["CCO>>CC=O", "CC>>C=C"])
+    result = grade_reaction(["CCO>>CC=O", "CC>>C=C"], ConfigType.DEFAULT_EXACT)
 
     assert [item.short_reason for item in result] == ["test.CCO>>CC=O", "test.CC>>C=C"]
     assert captured["loaded_default"] is True

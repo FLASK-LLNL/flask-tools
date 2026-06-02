@@ -69,10 +69,7 @@ def check_mass_conservation(
     return True, "Reaction is mass-conserved."
 
 
-def find_basic_missing(
-    delta: dict[str, int],
-    rules: list[MissingProductRule],
-) -> list[dict[str, object]]:
+def find_basic_missing(delta: dict[str, int]) -> list[dict[str, object]]:
     """Basic exceptions like missing hydrogens."""
     matches: list[dict[str, object]] = []
     if len(delta) == 1 and "H" in delta:
@@ -112,23 +109,7 @@ def find_missing_product_matches(
     return matches
 
 
-def load_solvent_commonness(path: Path) -> dict[str, str]:
-    commonness: dict[str, str] = {}
-    with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
-        for row in reader:
-            smiles = (row.get("smiles") or "").strip()
-            tier = (row.get("commonness") or "").strip().lower()
-            if not smiles or not tier:
-                continue
-            commonness[smiles] = tier
-    return commonness
-
-
-def load_solvent_rules(
-    solvents_path: Path, commonness_path: Path
-) -> list[MissingProductRule]:
-    commonness_by_smiles = load_solvent_commonness(commonness_path)
+def load_solvent_rules(solvents_path: Path) -> list[MissingProductRule]:
     rules: list[MissingProductRule] = []
 
     with solvents_path.open(newline="", encoding="utf-8") as handle:
@@ -136,6 +117,7 @@ def load_solvent_rules(
         for row in reader:
             smiles = (row.get("smiles") or "").strip()
             name = (row.get("common_name") or "").strip()
+            commonness = (row.get("commonness") or "").strip().lower() or "low"
             if not smiles or not name:
                 continue
 
@@ -144,7 +126,7 @@ def load_solvent_rules(
                     name=name,
                     smiles=smiles,
                     formula=formula_from_smiles(smiles),
-                    confidence=commonness_by_smiles.get(smiles, "low"),
+                    confidence=commonness,
                 )
             )
 
@@ -156,10 +138,7 @@ class MassConservationChecker(ReactionChecker):
 
     def __init__(self, config: PipetteConfig) -> None:
         self.config = config
-        self.missing_product_rules = load_solvent_rules(
-            config.solvent_catalog_path,
-            config.solvent_commonness_path,
-        )
+        self.missing_product_rules = load_solvent_rules(config.solvent_catalog_path)
 
     def run(
         self, rxn_smiles: str, context: dict[str, ToolResult] | None = None
@@ -189,7 +168,7 @@ class MassConservationChecker(ReactionChecker):
                 comment="Element counts are conserved.",
             )
 
-        matches = find_basic_missing(delta, self.missing_product_rules)
+        matches = find_basic_missing(delta)
         if not matches:
             matches = find_missing_product_matches(delta, self.missing_product_rules)
         if matches:
