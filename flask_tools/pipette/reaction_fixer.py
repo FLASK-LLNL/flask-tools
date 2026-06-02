@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 import json
-from typing import Any
+from typing import Any, TypeVar
 
 from pydantic import BaseModel
 
@@ -48,22 +48,23 @@ class ReactionFixResponse(BaseModel):
     comment: str = ""
 
 
-class LLMReactionFixer:
+_FixerT = TypeVar("_FixerT", bound="BaseLLMReactionFixer")
+
+
+class BaseLLMReactionFixer:
     def __init__(
         self,
         *,
         model: str,
         url: str,
         api_key: str,
-        client: object | None = None,
     ) -> None:
         self.model = model
         self.api_key = api_key
         self.url = url
-        self.client = client
 
     @classmethod
-    def from_config(cls, config: PipetteConfig) -> LLMReactionFixer | None:
+    def from_config(cls: type[_FixerT], config: PipetteConfig) -> _FixerT | None:
         fixer_config = config.llm_reaction_fixer
         if not fixer_config.enabled:
             return None
@@ -149,6 +150,8 @@ class LLMReactionFixer:
             ),
         }
 
+
+class LLMReactionFixer(BaseLLMReactionFixer):
     def fix(
         self,
         rxn_smiles: str,
@@ -159,27 +162,15 @@ class LLMReactionFixer:
             indent=2,
             sort_keys=True,
         )
-        if self.client is not None:
-            from .llm_query import query_messages
-
-            response_text = query_messages(
-                client=self.client,
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-        else:
-            response_text = query_task(
-                system_prompt=SYSTEM_PROMPT,
-                user_prompt=user_prompt,
-                model=self.model,
-                api_key=self.api_key,
-                url=self.url,
-                structured_output_schema=ReactionFixResponse,
-                agent_name="PipetteFixer",
-            )
+        response_text = query_task(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            model=self.model,
+            api_key=self.api_key,
+            url=self.url,
+            structured_output_schema=ReactionFixResponse,
+            agent_name="PipetteFixer",
+        )
         try:
             return self._parse_reaction_fix(rxn_smiles, response_text)
         except Exception as exc:
@@ -187,7 +178,9 @@ class LLMReactionFixer:
                 f"Reaction fixer failed to parse response: {exc} for {rxn_smiles} with response {response_text}"
             ) from exc
 
-    async def fix_async(
+
+class AsyncLLMReactionFixer(BaseLLMReactionFixer):
+    async def fix(
         self,
         rxn_smiles: str,
         results: list[ToolResult],
@@ -197,27 +190,15 @@ class LLMReactionFixer:
             indent=2,
             sort_keys=True,
         )
-        if self.client is not None:
-            from .llm_query import query_messages
-
-            response_text = query_messages(
-                client=self.client,
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": user_prompt},
-                ],
-            )
-        else:
-            response_text = await query_task_async(
-                system_prompt=SYSTEM_PROMPT,
-                user_prompt=user_prompt,
-                model=self.model,
-                api_key=self.api_key,
-                url=self.url,
-                structured_output_schema=ReactionFixResponse,
-                agent_name="PipetteFixer",
-            )
+        response_text = await query_task_async(
+            system_prompt=SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+            model=self.model,
+            api_key=self.api_key,
+            url=self.url,
+            structured_output_schema=ReactionFixResponse,
+            agent_name="PipetteFixer",
+        )
         try:
             return self._parse_reaction_fix(rxn_smiles, response_text)
         except Exception as exc:

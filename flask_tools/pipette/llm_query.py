@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import threading
-from typing import TYPE_CHECKING, Any, Awaitable
 import os
+import threading
+from typing import TYPE_CHECKING, Awaitable
+from urllib.parse import urlsplit, urlunsplit
 
 from charge.clients.agentframework import AgentFrameworkBackend
 from charge.tasks.task import Task
@@ -13,54 +13,89 @@ from pydantic import BaseModel
 if TYPE_CHECKING:
     from charge.clients.agentframework import AgentFrameworkAgent
 
-
-_CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
-_BACKEND_REGISTRY_LOCK = threading.Lock()
-_BACKEND_CACHE: dict[str, AgentFrameworkBackend] = {}
+BACKEND: AgentFrameworkBackend | None = None
 
 
-def _get_field(value: object, field_name: str) -> object:
-    if isinstance(value, dict):
-        return value.get(field_name)
-    return getattr(value, field_name, None)
-
-
-def _resolve_base_url(url: str | None) -> str | None:
+def _normalize_base_url(url: str | None) -> str | None:
     if not url:
-        return None
+        return url
 
-    trimmed = url.rstrip("/")
-    if trimmed.endswith(_CHAT_COMPLETIONS_SUFFIX):
-        return trimmed[: -len(_CHAT_COMPLETIONS_SUFFIX)]
-    return trimmed
+    parts = urlsplit(url)
+    normalized_path = parts.path.rstrip("/")
+
+    # Pipette configs historically stored a full endpoint path, while the
+    # model clients expect the API base URL and append their own route.
+    for suffix in ("/chat/completions", "/responses"):
+        if normalized_path.endswith(suffix):
+            normalized_path = normalized_path[: -len(suffix)] or "/"
+            break
+
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            normalized_path,
+            parts.query,
+            parts.fragment,
+        )
+    )
 
 
-def _backend_alias(*, model: str, api_key: str, url: str | None) -> str:
-    digest = hashlib.sha256(
-        f"{model}\0{api_key}\0{_resolve_base_url(url) or ''}".encode("utf-8")
-    ).hexdigest()
-    return f"pipette_llm_{digest[:16]}"
+def _backend_matches(
+    backend: AgentFrameworkBackend | None,
+    *,
+    model: str | None,
+    backend_name: str,
+    url: str | None,
+) -> bool:
+    if backend is None:
+        return False
+    return (
+        backend.model == model
+        and backend.backend == backend_name
+        and backend.base_url == url
+    )
+
+
+def set_agent_backend(
+    model: str | None = "gpt-5.4",
+    api_key: str | None = None,
+    backend: str = "livai",
+    url: str | None = None,
+) -> None:
+    global BACKEND
+    resolved_api_key = os.getenv("FLASK_ORCHESTRATOR_API_KEY", api_key)
+    resolved_model = os.getenv("FLASK_ORCHESTRATOR_MODEL", model)
+    resolved_backend = os.getenv("FLASK_ORCHESTRATOR_BACKEND", backend)
+    resolved_url = _normalize_base_url(os.getenv("FLASK_ORCHESTRATOR_URL", url))
+
+    BACKEND = AgentFrameworkBackend(
+        model=resolved_model,
+        backend=resolved_backend,
+        api_key=resolved_api_key,
+        base_url=resolved_url,
+        use_responses_api=True,
+    )
 
 
 def get_agentframework_backend(
     model: str | None = "gpt-5.4",
     api_key: str | None = None,
-    backend="livai",
+    backend: str = "livai",
     url: str | None = None,
 ) -> AgentFrameworkBackend:
-    API_KEY = os.getenv("FLASK_ORCHESTRATOR_API_KEY", api_key)
-    model = os.getenv("FLASK_ORCHESTRATOR_MODEL", model)
-    backend = os.getenv("FLASK_ORCHESTRATOR_BACKEND", backend)
-    BASE_URL = os.getenv("FLASK_ORCHESTRATOR_URL", url)
+    resolved_model = os.getenv("FLASK_ORCHESTRATOR_MODEL", model)
+    resolved_backend = os.getenv("FLASK_ORCHESTRATOR_BACKEND", backend)
+    resolved_url = _normalize_base_url(os.getenv("FLASK_ORCHESTRATOR_URL", url))
 
-    backend = AgentFrameworkBackend(
-        model=model,
-        backend=backend,
-        api_key=API_KEY,
-        base_url=BASE_URL,
-        use_responses_api=True,
-    )
-    return backend
+    if not _backend_matches(
+        BACKEND,
+        model=resolved_model,
+        backend_name=resolved_backend,
+        url=resolved_url,
+    ):
+        set_agent_backend(model=model, api_key=api_key, backend=backend, url=url)
+    return BACKEND  # noqa
 
 
 async def query_task_async(
@@ -85,6 +120,7 @@ async def query_task_async(
         api_key=api_key,
         url=url,
     )
+
     agent: AgentFrameworkAgent = backend.create_agent(
         task=task,
         agent_name=agent_name,
@@ -93,46 +129,6 @@ async def query_task_async(
     )
     result = await agent.run()
     return str(result)
-
-
-def extract_message_text(response: object) -> str:
-    choices = _get_field(response, "choices")
-    if not isinstance(choices, list) or not choices:
-        raise ValueError("LLM response did not contain any choices.")
-
-    message = _get_field(choices[0], "message")
-    if message is None:
-        raise ValueError("LLM response choice did not contain a message.")
-
-    content = _get_field(message, "content")
-    if isinstance(content, str):
-        stripped = content.strip()
-        if stripped:
-            return stripped
-
-    if isinstance(content, list):
-        text_parts: list[str] = []
-        for block in content:
-            text = _get_field(block, "text")
-            if isinstance(text, str) and text.strip():
-                text_parts.append(text.strip())
-        if text_parts:
-            return "\n".join(text_parts)
-
-    raise ValueError("LLM response message content was not text.")
-
-
-def query_messages(
-    *,
-    client: Any,
-    model: str,
-    messages: list[dict[str, str]],
-) -> str:
-    response = client.chat.completions.create(
-        model=model,
-        messages=messages,
-    )
-    return extract_message_text(response)
 
 
 def _run_coroutine_sync(coro: Awaitable[str]) -> str:

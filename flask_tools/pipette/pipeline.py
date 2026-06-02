@@ -1,6 +1,7 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
+import inspect
 import traceback
 
 from .config import PipetteConfig
@@ -13,14 +14,16 @@ from .verifiers import (
     ReactionEnergyChecker,
 )
 from .verifiers.base import Speed, CacheableReactionChecker
-from .judges import LLMJudge
+from .judges import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus
-from .reaction_fixer import LLMReactionFixer, ReactionFix
+from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
 from .rules import apply_exact_rules
 from .smiles import canonicalize_reaction_smiles
 from .llm_query import _run_coroutine_sync
 
 CheckerFactory = Callable[[PipetteConfig], ReactionChecker]
+LLMJudge = AsyncLLMJudge
+LLMReactionFixer = AsyncLLMReactionFixer
 
 
 @dataclass
@@ -60,8 +63,8 @@ class GradingPipeline:
         self,
         checkers: list[ReactionChecker],
         config: PipetteConfig | None = None,
-        judge: LLMJudge | None = None,
-        reaction_fixer: LLMReactionFixer | None = None,
+        judge: AsyncLLMJudge | None = None,
+        reaction_fixer: AsyncLLMReactionFixer | None = None,
     ) -> None:
         """judge: If provided, overrides the judge specified by the config"""
         self.checkers = checkers
@@ -70,9 +73,9 @@ class GradingPipeline:
         self.reaction_fixer = reaction_fixer
         self._validate_configuration()
         if self.config.mode == "ai" and self.judge is None:
-            self.judge = LLMJudge.from_config(self.config)
+            self.judge = AsyncLLMJudge.from_config(self.config)
         if self.reaction_fixer is None:
-            self.reaction_fixer = LLMReactionFixer.from_config(self.config)
+            self.reaction_fixer = AsyncLLMReactionFixer.from_config(self.config)
 
     def _validate_configuration(self) -> None:
         checker_names = [checker.name for checker in self.checkers]
@@ -166,13 +169,11 @@ class GradingPipeline:
             return None
 
         try:
-            if hasattr(self.reaction_fixer, "fix_async"):
-                fix = await self.reaction_fixer.fix_async(
-                    rxn_smiles,
-                    list(context.values()),
-                )
-            else:
-                fix = self.reaction_fixer.fix(rxn_smiles, list(context.values()))
+            fix_result = self.reaction_fixer.fix(
+                rxn_smiles,
+                list(context.values()),
+            )
+            fix = await fix_result if inspect.isawaitable(fix_result) else fix_result
         except Exception as exc:
             return (
                 ToolResult(
@@ -222,13 +223,15 @@ class GradingPipeline:
                 raise ValueError("AI mode requires an LLM judge implementation.")
 
             results = [pr[-1] for pr in prefix_results] + list(context.values())
-            if hasattr(self.judge, "judge_async"):
-                res = await self.judge.judge_async(
-                    rxn_smiles,
-                    results,
-                )
-            else:
-                res = self.judge.judge(rxn_smiles, results)
+            judge_result = self.judge.judge(
+                rxn_smiles,
+                results,
+            )
+            res = (
+                await judge_result
+                if inspect.isawaitable(judge_result)
+                else judge_result
+            )
             assert res is not None
             res = self._with_prefix_results(res, prefix_results)
             assert isinstance(res, ReactionGrade)
@@ -511,8 +514,8 @@ class GradingPipeline:
 def build_default_pipeline(
     config: PipetteConfig | None = None,
     *,
-    judge: LLMJudge | None = None,
-    reaction_fixer: LLMReactionFixer | None = None,
+    judge: AsyncLLMJudge | None = None,
+    reaction_fixer: AsyncLLMReactionFixer | None = None,
     checker_factories: dict[str, CheckerFactory] | None = None,
 ) -> GradingPipeline:
     resolved = config or PipetteConfig()

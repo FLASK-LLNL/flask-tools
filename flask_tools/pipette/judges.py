@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -23,7 +23,10 @@ class ReactionGradeResponse(BaseModel):
     comment: str = ""
 
 
-class LLMJudge:
+_JudgeT = TypeVar("_JudgeT", bound="BaseLLMJudge")
+
+
+class BaseLLMJudge:
     def __init__(
         self,
         *,
@@ -31,16 +34,14 @@ class LLMJudge:
         model: str,
         api_key: str,
         prompt_path: Path,
-        client: object | None = None,
     ) -> None:
         self.url = url
         self.model = model
         self.api_key = api_key
         self.prompt_path = prompt_path
-        self.client = client
 
     @classmethod
-    def from_config(cls, config: PipetteConfig) -> LLMJudge:
+    def from_config(cls: type[_JudgeT], config: PipetteConfig) -> _JudgeT:
         api_key = resolve_llm_api_key(config.llm_judge.api_key)
         if not api_key:
             raise ValueError(
@@ -107,48 +108,32 @@ class LLMJudge:
             comment=parsed.comment,
         )
 
-    async def judge_async(
+
+class AsyncLLMJudge(BaseLLMJudge):
+    async def judge(
         self,
         rxn_smiles: str,
         results: list[ToolResult],
     ) -> ReactionGrade:
         messages = self._build_messages(rxn_smiles, results)
-        if self.client is not None:
-            from .llm_query import query_messages
-
-            response_text = query_messages(
-                client=self.client,
-                model=self.model,
-                messages=messages,
-            )
-        else:
-            response_text = await query_task_async(
-                system_prompt=messages[0]["content"],
-                user_prompt=messages[1]["content"],
-                model=self.model,
-                api_key=self.api_key,
-                url=self.url,
-                structured_output_schema=ReactionGradeResponse,
-                agent_name="PipetteJudge",
-            )
+        response_text = await query_task_async(
+            system_prompt=messages[0]["content"],
+            user_prompt=messages[1]["content"],
+            model=self.model,
+            api_key=self.api_key,
+            url=self.url,
+            structured_output_schema=ReactionGradeResponse,
+            agent_name="PipetteJudge",
+        )
         return self._parse_reaction_grade(response_text, results)
 
+
+class LLMJudge(BaseLLMJudge):
     def judge(
         self,
         rxn_smiles: str,
         results: list[ToolResult],
     ) -> ReactionGrade:
-        if self.client is not None:
-            messages = self._build_messages(rxn_smiles, results)
-            from .llm_query import query_messages
-
-            response_text = query_messages(
-                client=self.client,
-                model=self.model,
-                messages=messages,
-            )
-            return self._parse_reaction_grade(response_text, results)
-
         messages = self._build_messages(rxn_smiles, results)
         response_text = query_task(
             system_prompt=messages[0]["content"],

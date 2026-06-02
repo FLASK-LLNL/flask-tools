@@ -12,7 +12,7 @@ from .constants import ReactionGrade, ToolResult
 from .pipeline import build_default_pipeline
 
 if TYPE_CHECKING:
-    from .judges import LLMJudge
+    from .judges import AsyncLLMJudge
 
 REACTION_SMILES_COLUMNS = (
     "rxn_smiles",
@@ -34,7 +34,7 @@ def _get_possible_fixed_rxn_smi(reaction_grade: ReactionGrade) -> str | None:
 def _grade_reactions(
     rxn_smiles_list: list[str],
     config: PipetteConfig | None = None,
-    judge: LLMJudge | None = None,
+    judge: AsyncLLMJudge | None = None,
 ) -> list[ReactionGrade]:
     resolved_config = config or PipetteConfig.from_default_exact_yaml()
     pipeline = build_default_pipeline(config=resolved_config, judge=judge)
@@ -58,7 +58,7 @@ def _build_output_records(
 def grade_reaction(
     rxn_smiles_list: list[str],
     config: PipetteConfig | None = None,
-    judge: LLMJudge | None = None,
+    judge: AsyncLLMJudge | None = None,
 ) -> list[ReactionGrade]:
     res = _grade_reactions(rxn_smiles_list, config=config, judge=judge)
     for rxn_smiles, result in zip(rxn_smiles_list, res, strict=True):
@@ -69,7 +69,7 @@ def grade_reaction(
 def grade_reaction_json(
     rxn_smiles: str,
     config: PipetteConfig | None = None,
-    judge: LLMJudge | None = None,
+    judge: AsyncLLMJudge | None = None,
 ) -> dict:
     """Return single-reaction JSON object with full information."""
     return grade_reactions_json([rxn_smiles], config=config, judge=judge)[0]
@@ -78,7 +78,7 @@ def grade_reaction_json(
 def grade_reactions_json(
     rxn_smiles_list: list[str],
     config: PipetteConfig | None = None,
-    judge: LLMJudge | None = None,
+    judge: AsyncLLMJudge | None = None,
 ) -> list[dict]:
     """Return the full information JSON payload for one or more reactions."""
     results = _grade_reactions(rxn_smiles_list, config=config, judge=judge)

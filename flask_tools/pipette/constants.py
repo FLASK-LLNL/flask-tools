@@ -6,7 +6,7 @@ import json
 import os
 from typing import Any
 
-DEFAULT_LLM_BASE_URL = "https://livai-api.llnl.gov/v1/chat/completions"
+DEFAULT_LLM_BASE_URL = "https://livai-api.llnl.gov/v1/"
 
 LLM_API_KEY_ENV_VARS = (
     "API_KEY",

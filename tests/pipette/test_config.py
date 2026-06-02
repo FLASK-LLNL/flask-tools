@@ -79,7 +79,7 @@ def test_default_yaml_configs_load() -> None:
     assert ai.tools_setting.reaction_energy.database is not None
     assert ai.llm_judge.allow_fail == ["exact_match"]
     assert ai.llm_judge.model == "gpt-5.4"
-    assert ai.llm_judge.url == "https://livai-api.llnl.gov/v1/chat/completions"
+    assert ai.llm_judge.url == "https://livai-api.llnl.gov/v1/"
     assert ai.llm_judge.prompt_path.name == "prompt.txt"
     assert ai.llm_reaction_fixer.enabled is True
     assert ai.llm_reaction_fixer.model == "gpt-5.4"
