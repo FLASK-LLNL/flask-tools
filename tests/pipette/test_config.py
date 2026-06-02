@@ -3,7 +3,7 @@ from __future__ import annotations
 from textwrap import dedent
 
 from flask_tools.pipette.config import PipetteConfig
-from flask_tools.pipette.judges import LLMJudge
+from flask_tools.pipette.judge import LLMJudge
 from flask_tools.pipette.reaction_fixer import LLMReactionFixer
 
 
@@ -23,7 +23,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
             llm_judge:
               allow_fail:
                 - reaction_energy
-              url: https://example.test/v1/chat/completions
+              url: https://example.test/v1/
               model: custom-model
               api_key: sk-test
               prompt_path: judge-prompt.txt
@@ -55,7 +55,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
         == (tmp_path / "fake_molecule_energies.csv").resolve()
     )
     assert config.llm_judge.allow_fail == ["reaction_energy"]
-    assert config.llm_judge.url == "https://example.test/v1/chat/completions"
+    assert config.llm_judge.url == "https://example.test/v1/"
     assert config.llm_judge.model == "custom-model"
     assert config.llm_judge.api_key == "sk-test"
     assert config.llm_judge.prompt_path == (tmp_path / "judge-prompt.txt").resolve()

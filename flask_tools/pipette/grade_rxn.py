@@ -12,7 +12,7 @@ from .constants import ReactionGrade, ToolResult
 from .pipeline import build_default_pipeline
 
 if TYPE_CHECKING:
-    from .judges import AsyncLLMJudge
+    from .judge import AsyncLLMJudge
 
 REACTION_SMILES_COLUMNS = (
     "rxn_smiles",

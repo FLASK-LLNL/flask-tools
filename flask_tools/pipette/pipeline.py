@@ -14,7 +14,7 @@ from .verifiers import (
     ReactionEnergyChecker,
 )
 from .verifiers.base import Speed, CacheableReactionChecker
-from .judges import AsyncLLMJudge
+from .judge import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus
 from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
 from .exact_grading import apply_exact_rules
