@@ -154,10 +154,8 @@ def test_ai_mode_stops_after_unallowed_tool_error() -> None:
 
 def test_ai_mode_requires_api_key_for_default_judge(monkeypatch) -> None:
     for env_var in (
-        "API_KEY",
-        "JUDGE_API_KEY",
+        "FLASK_ORCHESTRATOR_API_KEY",
         "PIPETTE_API_KEY",
-        "PIPETTE_LLM_API_KEY",
         "OPENAI_API_KEY",
     ):
         monkeypatch.delenv(env_var, raising=False)

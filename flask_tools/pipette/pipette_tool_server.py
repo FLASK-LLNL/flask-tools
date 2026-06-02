@@ -7,12 +7,12 @@
 
 """Necessary env vars for LLM steps:
 One of:
-    "API_KEY",
-    "JUDGE_API_KEY",
-    "PIPETTE_API_KEY",
-    "PIPETTE_LLM_API_KEY",
-    "OPENAI_API_KEY",
+    "FLASK_ORCHESTRATOR_API_KEY"
+    "PIPETTE_API_KEY"
+    "OPENAI_API_KEY"
+
 Optionally one of:
+    "FLASK_ORCHESTRATOR_URL"
     "LLM_BASE_URL"
     "PIPETTE_LLM_BASE_URL"
 

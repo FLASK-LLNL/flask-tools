@@ -9,14 +9,13 @@ from typing import Any
 DEFAULT_LLM_BASE_URL = "https://livai-api.llnl.gov/v1/"
 
 LLM_API_KEY_ENV_VARS = (
-    "API_KEY",
-    "JUDGE_API_KEY",
+    "FLASK_ORCHESTRATOR_API_KEY",
     "PIPETTE_API_KEY",
-    "PIPETTE_LLM_API_KEY",
     "OPENAI_API_KEY",
 )
 
 LLM_BASE_URL_ENV_VARS = (
+    "FLASK_ORCHESTRATOR_URL",
     "LLM_BASE_URL",
     "PIPETTE_LLM_BASE_URL",
 )
