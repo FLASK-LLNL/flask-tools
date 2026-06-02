@@ -33,10 +33,13 @@ def _get_possible_fixed_rxn_smi(reaction_grade: ReactionGrade) -> str | None:
 
 def _grade_reactions(
     rxn_smiles_list: list[str],
-    config: PipetteConfig | None = None,
+    config: PipetteConfig | str | None = ConfigType.LLM_JUDGE_NO_DFT,
     judge: AsyncLLMJudge | None = None,
 ) -> list[ReactionGrade]:
-    resolved_config = config or PipetteConfig.from_default_exact_yaml()
+    if isinstance(config, str):
+        resolved_config = load_config(config)
+    else:
+        resolved_config = config or PipetteConfig.from_default_exact_yaml()
     pipeline = build_default_pipeline(config=resolved_config, judge=judge)
     return list(pipeline.grade(rxn_smiles_list))
 
@@ -56,19 +59,30 @@ def _build_output_records(
 
 
 def grade_reaction(
-    rxn_smiles_list: list[str],
-    config: PipetteConfig | None = None,
+    rxn_smiles_list: str | list[str],
+    config: PipetteConfig | str | None = ConfigType.LLM_JUDGE_NO_DFT,
     judge: AsyncLLMJudge | None = None,
+    verbose: bool = False,
 ) -> list[ReactionGrade]:
+    """Grade reactions, return list of ReactionGrade
+    Args:
+        rxn_smiles_list: str or list of strings, of reaction SMILES separated by >>
+        config: Optional. PipetteConfig of one of ConfigType strings
+        judge: Optional Judge object for final grading
+        verbose: If true, prints summary
+    """
+    if isinstance(rxn_smiles_list, str):
+        rxn_smiles_list = [rxn_smiles_list]
     res = _grade_reactions(rxn_smiles_list, config=config, judge=judge)
-    for rxn_smiles, result in zip(rxn_smiles_list, res, strict=True):
-        print(f"{rxn_smiles}:\n{result}\n\n")
+    if verbose:
+        for rxn_smiles, result in zip(rxn_smiles_list, res, strict=True):
+            print(f"{rxn_smiles}:\n{result}\n\n")
     return res
 
 
 def grade_reaction_json(
     rxn_smiles: str,
-    config: PipetteConfig | None = None,
+    config: PipetteConfig | str | None = ConfigType.LLM_JUDGE_NO_DFT,
     judge: AsyncLLMJudge | None = None,
 ) -> dict:
     """Return single-reaction JSON object with full information."""
@@ -77,7 +91,7 @@ def grade_reaction_json(
 
 def grade_reactions_json(
     rxn_smiles_list: list[str],
-    config: PipetteConfig | None = None,
+    config: PipetteConfig | str | None = ConfigType.LLM_JUDGE_NO_DFT,
     judge: AsyncLLMJudge | None = None,
 ) -> list[dict]:
     """Return the full information JSON payload for one or more reactions."""
@@ -164,7 +178,7 @@ def main() -> list[dict]:
     config = load_config(args.config)
     if args.debug:
         config = _apply_debug_overrides(config)
-    results = grade_reaction(rxn_smiles_list, config=config)
+    results = grade_reaction(rxn_smiles_list, config=config, verbose=True)
     output = _build_output_records(rxn_smiles_list, results)
     if args.verbose:
         print("Full output, json formatted:")

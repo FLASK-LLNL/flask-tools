@@ -28,14 +28,14 @@ from loguru import logger
 from lc_conductor.tool_registration import register_tool_server
 from flask_tools.utils.server_utils import get_hostname
 from .grade_rxn import grade_reaction_json, _apply_debug_overrides
-from .config import load_config
+from .config import load_config, ConfigType
 
 
 @click.command()
 @click.option(
     "--config",
-    default="llm-judge-no-dft",
-    help="Path to config yaml file, or llm-judge for default settings",
+    default=ConfigType.ConfigType.LLM_JUDGE_NO_DFT,
+    help="Path to config yaml file, or llm-judge-no-dft for default settings",
 )
 @click.option(
     "--transport",
