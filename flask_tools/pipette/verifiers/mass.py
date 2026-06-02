@@ -161,7 +161,9 @@ class MassConservationChecker(ReactionChecker):
             config.solvent_commonness_path,
         )
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(
+        self, rxn_smiles: str, context: dict[str, ToolResult] | None = None
+    ) -> ToolResult:
         try:
             delta = element_delta(rxn_smiles, explicit_hydrogens=True)
         except Exception as exc:
