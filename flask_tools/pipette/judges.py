@@ -111,8 +111,6 @@ class LLMJudge:
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-        *,
-        experiment: object | None = None,
     ) -> ReactionGrade:
         messages = self._build_messages(rxn_smiles, results)
         if self.client is not None:
@@ -139,8 +137,6 @@ class LLMJudge:
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-        *,
-        experiment: object | None = None,
     ) -> ReactionGrade:
         if self.client is not None:
             messages = self._build_messages(rxn_smiles, results)

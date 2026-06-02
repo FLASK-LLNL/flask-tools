@@ -153,8 +153,6 @@ class LLMReactionFixer:
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-        *,
-        experiment: object | None = None,
     ) -> ReactionFix:
         user_prompt = json.dumps(
             self._build_user_payload(rxn_smiles, results),
@@ -193,8 +191,6 @@ class LLMReactionFixer:
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-        *,
-        experiment: object | None = None,
     ) -> ReactionFix:
         user_prompt = json.dumps(
             self._build_user_payload(rxn_smiles, results),

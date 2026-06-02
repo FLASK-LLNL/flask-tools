@@ -161,37 +161,18 @@ class GradingPipeline:
         self,
         rxn_smiles: str,
         context: dict[str, ToolResult],
-        experiment: object | None = None,
     ) -> tuple[ToolResult, str | None] | None:
         if self.reaction_fixer is None:
             return None
 
         try:
             if hasattr(self.reaction_fixer, "fix_async"):
-                try:
-                    fix = await self.reaction_fixer.fix_async(
-                        rxn_smiles,
-                        list(context.values()),
-                        experiment=experiment,
-                    )
-                except TypeError as exc:
-                    if "experiment" not in str(exc):
-                        raise
-                    fix = await self.reaction_fixer.fix_async(  # type: ignore[misc]
-                        rxn_smiles,
-                        list(context.values()),
-                    )
+                fix = await self.reaction_fixer.fix_async(
+                    rxn_smiles,
+                    list(context.values()),
+                )
             else:
-                try:
-                    fix = self.reaction_fixer.fix(
-                        rxn_smiles,
-                        list(context.values()),
-                        experiment=experiment,
-                    )
-                except TypeError as exc:
-                    if "experiment" not in str(exc):
-                        raise
-                    fix = self.reaction_fixer.fix(rxn_smiles, list(context.values()))
+                fix = self.reaction_fixer.fix(rxn_smiles, list(context.values()))
         except Exception as exc:
             return (
                 ToolResult(
@@ -225,7 +206,6 @@ class GradingPipeline:
         rxn_smiles: str,
         context: dict[str, ToolResult],
         prefix_results: list[tuple[str, str, ToolResult]],
-        experiment: object | None = None,
     ) -> ReactionGrade:
         """Exact grading happens without the prefix_results, namely the results before llm-fix of rxn balance.
         AI grading does use it, because it should be smart enough to deal with it.
@@ -243,27 +223,12 @@ class GradingPipeline:
 
             results = [pr[-1] for pr in prefix_results] + list(context.values())
             if hasattr(self.judge, "judge_async"):
-                try:
-                    res = await self.judge.judge_async(
-                        rxn_smiles,
-                        results,
-                        experiment=experiment,
-                    )
-                except TypeError as exc:
-                    if "experiment" not in str(exc):
-                        raise
-                    res = await self.judge.judge_async(rxn_smiles, results)  # type: ignore[misc]
+                res = await self.judge.judge_async(
+                    rxn_smiles,
+                    results,
+                )
             else:
-                try:
-                    res = self.judge.judge(
-                        rxn_smiles,
-                        results,
-                        experiment=experiment,
-                    )
-                except TypeError as exc:
-                    if "experiment" not in str(exc):
-                        raise
-                    res = self.judge.judge(rxn_smiles, results)
+                res = self.judge.judge(rxn_smiles, results)
             assert res is not None
             res = self._with_prefix_results(res, prefix_results)
             assert isinstance(res, ReactionGrade)
@@ -278,7 +243,6 @@ class GradingPipeline:
         *,
         fix_attempted: bool = False,
         prefix_results: list[tuple[str, str, ToolResult]] | None = None,
-        experiment: object | None = None,
     ) -> ReactionGrade | PendingReaction:
         """
         tiered_run: Will return None if there are long-running checks in the pipeline without cached result
@@ -348,7 +312,6 @@ class GradingPipeline:
                 fix_attempt = await self._attempt_llm_fix_async(
                     rxn_smiles,
                     context,
-                    experiment,
                 )
                 if fix_attempt is not None:
                     fix_result, fixed_rxn_smiles = fix_attempt
@@ -363,10 +326,9 @@ class GradingPipeline:
                                 *prefix,
                                 (rxn_smiles, "llm_reaction_fix", fix_result),
                             ],
-                            experiment=experiment,
                         )
 
-        return await self._finalize_grade_async(rxn_smiles, context, prefix, experiment)
+        return await self._finalize_grade_async(rxn_smiles, context, prefix)
 
     def grade_one(
         self,
@@ -375,7 +337,6 @@ class GradingPipeline:
         *,
         fix_attempted: bool = False,
         prefix_results: list[tuple[str, str, ToolResult]] | None = None,
-        experiment: object | None = None,
     ) -> ReactionGrade | PendingReaction:
         return _run_coroutine_sync(
             self.grade_one_async(
@@ -383,7 +344,6 @@ class GradingPipeline:
                 tiered_run=tiered_run,
                 fix_attempted=fix_attempted,
                 prefix_results=prefix_results,
-                experiment=experiment,
             )
         )
 

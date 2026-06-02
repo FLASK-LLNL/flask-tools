@@ -4,18 +4,19 @@ import asyncio
 import hashlib
 import threading
 from typing import TYPE_CHECKING, Any, Awaitable
+import os
 
-from charge.clients.autogen import AutoGenBackend
+from charge.clients.agentframework import AgentFrameworkBackend
 from charge.tasks.task import Task
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from charge.clients.autogen import AutoGenAgent
+    from charge.clients.agentframework import AgentFrameworkAgent
 
 
 _CHAT_COMPLETIONS_SUFFIX = "/chat/completions"
 _BACKEND_REGISTRY_LOCK = threading.Lock()
-_BACKEND_CACHE: dict[str, AutoGenBackend] = {}
+_BACKEND_CACHE: dict[str, AgentFrameworkBackend] = {}
 
 
 def _get_field(value: object, field_name: str) -> object:
@@ -41,22 +42,25 @@ def _backend_alias(*, model: str, api_key: str, url: str | None) -> str:
     return f"pipette_llm_{digest[:16]}"
 
 
-def get_autogen_backend(
-    *,
-    model: str,
-    api_key: str,
+def get_agentframework_backend(
+    model: str | None = "gpt-5.4",
+    api_key: str | None = None,
+    backend="livai",
     url: str | None = None,
-) -> AutoGenBackend:
-    alias = _backend_alias(model=model, api_key=api_key, url=url)
-    with _BACKEND_REGISTRY_LOCK:
-        if alias not in _BACKEND_CACHE:
-            _BACKEND_CACHE[alias] = AutoGenBackend(
-                model=model,
-                backend="openai",
-                api_key=api_key,
-                base_url=_resolve_base_url(url),
-            )
-    return _BACKEND_CACHE[alias]
+) -> AgentFrameworkBackend:
+    API_KEY = os.getenv("FLASK_ORCHESTRATOR_API_KEY", api_key)
+    model = os.getenv("FLASK_ORCHESTRATOR_MODEL", model)
+    backend = os.getenv("FLASK_ORCHESTRATOR_BACKEND", backend)
+    BASE_URL = os.getenv("FLASK_ORCHESTRATOR_URL", url)
+
+    backend = AgentFrameworkBackend(
+        model=model,
+        backend=backend,
+        api_key=API_KEY,
+        base_url=BASE_URL,
+        use_responses_api=True,
+    )
+    return backend
 
 
 async def query_task_async(
@@ -76,12 +80,12 @@ async def query_task_async(
         user_prompt=user_prompt,
         structured_output_schema=structured_output_schema,
     )
-    backend = get_autogen_backend(
+    backend = get_agentframework_backend(
         model=model,
         api_key=api_key,
         url=url,
     )
-    agent: AutoGenAgent = backend.create_agent(
+    agent: AgentFrameworkAgent = backend.create_agent(
         task=task,
         agent_name=agent_name,
         max_retries=max_retries,
