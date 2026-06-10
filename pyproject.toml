@@ -21,7 +21,6 @@ dependencies = [
     "rdkit>=2025.3.6",
     "pre-commit",
     "black",
-    "pipette @ git+ssh://git@czgitlab.llnl.gov:7999/li54/pipette.git@5ee1598b91bb98da8683dfcbe9ba1887884b7d0e",
 ]
 
 [tool.setuptools.packages.find]

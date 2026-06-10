@@ -134,11 +134,6 @@ def _load_reaction_smiles_lines(path: Path) -> list[str]:
         return [line.strip() for line in handle if line.strip()]
 
 
-def _apply_debug_overrides(config: PipetteConfig) -> PipetteConfig:
-    config.rules.use_dft = True
-    return config
-
-
 def main() -> list[dict]:
     parser = argparse.ArgumentParser(
         description="Grade one or more reaction SMILES strings."
@@ -159,8 +154,8 @@ def main() -> list[dict]:
     parser.add_argument(
         "--config",
         default="rules",
-        help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE}', "
-        f"'{ConfigType.LLM_JUDGE_NO_DFT}, or '{ConfigType.RULES}'.",
+        help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE_WITH_DFT}', "
+        f"'{ConfigType.LLM_JUDGE_NO_DFT}, or '{ConfigType.RULES_NO_DFT}'.",
     )
     parser.add_argument(
         "--verbose",

@@ -289,16 +289,16 @@ class PipetteConfig:
 
 
 def load_config(config_arg: str) -> PipetteConfig:
-    if config_arg == ConfigType.LLM_JUDGE:
+    if config_arg == ConfigType.LLM_JUDGE_WITH_DFT:
         return PipetteConfig.from_default_ai_yaml()
     elif config_arg == ConfigType.LLM_JUDGE_NO_DFT:
         return PipetteConfig.from_yaml(package_config_path("ai_judge_no_dft.yaml"))
-    elif config_arg == ConfigType.RULES:
+    elif config_arg == ConfigType.RULES_NO_DFT:
         return PipetteConfig.from_default_exact_yaml()
     return PipetteConfig.from_yaml(config_arg)
 
 
 class ConfigType(StrEnum):
-    RULES = "rules"
-    LLM_JUDGE = "llm-judge"
+    RULES_NO_DFT = "rules"
+    LLM_JUDGE_WITH_DFT = "llm-judge-with-dft"
     LLM_JUDGE_NO_DFT = "llm-judge"

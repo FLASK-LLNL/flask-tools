@@ -115,13 +115,13 @@ class MoleculeEnergyStore:
         if self.csv_cache is not None:
             self.csv_cache.update_csv(update)
 
-    def lookup(self, rxn_smi: str) -> MoleculeEnergyRecord | None:
-        energy = self.energies_by_inchi_key.get(smiles_to_inchi_key(rxn_smi), None)
+    def lookup(self, mol_smi: str) -> MoleculeEnergyRecord | None:
+        energy = self.energies_by_inchi_key.get(smiles_to_inchi_key(mol_smi), None)
         if energy is None:
             return None
         else:
             return MoleculeEnergyRecord(
-                smi=rxn_smi, energy_ev=energy, source="molecule_energy_csv"
+                smi=mol_smi, energy_ev=energy, source="molecule_energy_csv"
             )
 
 
@@ -151,6 +151,7 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         if dft_executor is not None:
             self.dft_executor = dft_executor
         else:
+            # In the future, some DFT method will be the default, instantiate it here?
             raise ValueError("DFT executor is required for reaction energy checks.")
 
     def result_from_energies(self, record: ReactionEnergyRecord | None) -> ToolResult:

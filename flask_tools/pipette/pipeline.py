@@ -35,8 +35,14 @@ class PendingReaction:
 
 
 def resolve_tool_list(
-    tool_list: str | list[str], available_tools: list[str]
+    tool_list: str | list[str],
+    available_tools: list[str],
+    use_dft: bool = False,
 ) -> list[str]:
+    if use_dft:
+        assert "reaction_energy" in available_tools
+    if not use_dft:
+        available_tools = [t for t in available_tools if t is not "reaction_energy"]
     if tool_list == "all":
         return list(available_tools)
 
@@ -530,7 +536,9 @@ def build_default_pipeline(
             ),
         ),
     }
-    selected_names = resolve_tool_list(resolved.tool_list, list(factories))
+    selected_names = resolve_tool_list(
+        resolved.tool_list, list(factories), use_dft=config.rules.use_dft
+    )
     checkers = [factories[name](resolved) for name in selected_names]
     return GradingPipeline(
         checkers=checkers,

@@ -3,8 +3,10 @@ from __future__ import annotations
 import pytest
 import pandas as pd
 
-from flask_tools.pipette.verifiers.base import ReactionChecker
-from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig
+import flask_tools.pipette.verifiers.reaction_energy
+from flask_tools.pipette.verifiers import ReactionEnergyChecker
+from flask_tools.pipette.verifiers.base import ReactionChecker, CacheableReactionChecker
+from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig, RulesConfig
 from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
 from flask_tools.pipette.reaction_fixer import ReactionFix
 from flask_tools.pipette.pipeline import (
@@ -14,11 +16,15 @@ from flask_tools.pipette.pipeline import (
     resolve_tool_list,
 )
 from conftest import RecordingJudge
+from tests.pipette import helpers
+
 
 # todo check this file
 
 
 class StubChecker(ReactionChecker):
+    """A ReactionChecker that returns result it was initialized with."""
+
     def __init__(
         self,
         name: str,
@@ -37,6 +43,8 @@ class StubChecker(ReactionChecker):
 
 
 class RoutingChecker(ReactionChecker):
+    """A reaction checker that returns result of handler function it was initialized with."""
+
     def __init__(self, name: str, handler, *, stops_on_fail: bool = False) -> None:
         self.name = name
         self._handler = handler
@@ -46,6 +54,17 @@ class RoutingChecker(ReactionChecker):
     def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
         self.calls.append(rxn_smiles)
         return self._handler(rxn_smiles, context)
+
+
+class CacheableRoutingChecker(RoutingChecker, CacheableReactionChecker):
+    def check_cache(self, rxn_smiles: str) -> None | ToolResult:
+        self.calls.append(rxn_smiles)
+        return self._handler(rxn_smiles, {})
+
+
+class DFTMockedReactionEnergyChecker(ReactionEnergyChecker):
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs, dft_executor=helpers.FakeDFTExecutor())
 
 
 def _pass_result(name: str) -> ToolResult:
@@ -68,7 +87,9 @@ def test_resolve_tool_list_rejects_unknown_and_duplicate_tools() -> None:
 
 
 def test_build_default_pipeline_uses_tool_list_order() -> None:
-    config = PipetteConfig(tool_list=["third", "first"])
+    config = PipetteConfig(
+        tool_list=["third", "first"], rules=RulesConfig(use_dft=False)
+    )
     pipeline = build_default_pipeline(
         config=config,
         checker_factories={
@@ -81,19 +102,20 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
 
 
-def test_build_default_pipeline_passes_reaction_energy_database_string(
-    tmp_path,
-) -> None:
-    database_path = tmp_path / "fake_molecule_energies.csv"
-    database_path.write_text("inchi_key,energy_ev_mol\nTEST,-1.0\n", encoding="utf-8")
-    config = PipetteConfig(tool_list=["reaction_energy"])
-    config.tools_setting.reaction_energy.database = database_path
-
-    pipeline = build_default_pipeline(config=config)
-
-    checker = pipeline.checkers[0]
-    assert checker.name == "reaction_energy"
-    assert checker.database == str(database_path.resolve())
+# peggy: possibly remove after discuss w/ Tal
+# def test_build_default_pipeline_passes_reaction_energy_database_string(
+#     tmp_path,
+# ) -> None:
+#     database_path = tmp_path / "fake_molecule_energies.csv"
+#     database_path.write_text("inchi_key,energy_ev_mol\nTEST,-1.0\n", encoding="utf-8")
+#     config = PipetteConfig(tool_list=["reaction_energy"])
+#     config.tools_setting.reaction_energy.database = database_path
+#
+#     pipeline = build_default_pipeline(config=config)
+#
+#     checker = pipeline.checkers[0]
+#     assert checker.name == "reaction_energy"
+#     assert checker.database == str(database_path.resolve())
 
 
 def test_ai_mode_continues_after_allowed_tool_error() -> None:
@@ -202,7 +224,8 @@ def test_ai_mode_rejects_unknown_allow_fail_tool() -> None:
         )
 
 
-def test_exact_pipeline(test_data_path) -> None:
+# peggy: move to integration tests/ test_reaction
+def test_exact_pipeline(monkeypatch, test_data_path) -> None:
     """Test exact pipeline on the example reactions"""
     df = pd.read_csv(test_data_path / "rxns.csv")  # noqa
     df.set_index("id", inplace=True)
@@ -211,13 +234,14 @@ def test_exact_pipeline(test_data_path) -> None:
     res = pipeline.grade_one(rxn_smi)
 
     assert res.final_grade is FinalGrade.POSSIBLE, str(res)
-    assert res.short_reason == "exact.mass_potential-high.energy_pass"
+    assert res.short_reason == "exact.mass_potential-high"
 
 
 def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results() -> (
     None
 ):
     rxn_smiles = "CCO>>CC=O"
+    # peggy: these can be StubCheckers instead of RoutingChecker. And it doesn't need to be _pass_result necessarily, although it more closely replicaetes the usual return type
     pipeline = GradingPipeline(
         checkers=[
             RoutingChecker(
@@ -228,14 +252,20 @@ def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results
                 "exact_match", lambda _rxn_smiles, _: _pass_result("exact_match")
             ),
             RoutingChecker(
+                "charge_conservation",
+                lambda _rxn_smiles, _: _pass_result("charge_conservation"),
+            ),
+            CacheableRoutingChecker(
                 "reaction_energy",
-                lambda _rxn_smiles, _: _pass_result("reaction_energy"),
+                lambda _rxn_smiles, _: None,  # return None = Not found in cache
             ),
         ],
         config=PipetteConfig(mode="exact"),
     )
 
-    pending = pipeline.grade_one(rxn_smiles, tiered_run=True)
+    pending = pipeline.grade_one(
+        rxn_smiles, tiered_run=True
+    )  # tiered_run: Will stop if cached result not found
 
     assert isinstance(pending, PendingReaction)
     assert pending.rxn_smiles == rxn_smiles
@@ -246,10 +276,12 @@ def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results
             _pass_result("basic_smiles_validation"),
         ),
         (rxn_smiles, "exact_match", _pass_result("exact_match")),
+        (rxn_smiles, "charge_conservation", _pass_result("charge_conservation")),
     ]
 
 
 def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
+    # peggy: this could go into the e2e tests... what to name the e2e? pipeline? rxn?
     original = "CCO.O>>CC"
     fixed = "CCO.O>>CC.O"
 

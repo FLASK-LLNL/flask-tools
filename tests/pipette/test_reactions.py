@@ -4,7 +4,7 @@ import sys
 import pytest
 
 from flask_tools.pipette.constants import FinalGrade
-from flask_tools.pipette.grade_rxn import _apply_debug_overrides, grade_reaction, main
+from flask_tools.pipette.grade_rxn import grade_reaction, main
 from flask_tools.pipette.config import load_config, ConfigType
 from flask_tools.pipette.reaction_fixer import ReactionFix
 
@@ -27,17 +27,18 @@ def _mock_caffeine() -> ReactionFix:
 @pytest.mark.parametrize(
     "config_name",
     [
-        ConfigType.LLM_JUDGE,
-        ConfigType.RULES,
+        ConfigType.LLM_JUDGE_NO_DFT,
+        ConfigType.RULES_NO_DFT,
     ],
 )
 def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
+    # peggy: keep, this will be the end to end test
     fixer, judge = install_mock_llm_services(
         fix=_mock_caffeine(),
         final_grade=FinalGrade.POSSIBLE,
     )
 
-    config = _apply_debug_overrides(load_config(config_name))
+    config = load_config(config_name)
     results = grade_reaction([ORIGINAL_REACTION_SMILES], config=config)
 
     assert len(fixer.calls) == 1
@@ -45,11 +46,11 @@ def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) 
 
     result = results[0]
 
-    if config_name == ConfigType.LLM_JUDGE:
+    if config_name == ConfigType.LLM_JUDGE_NO_DFT:
         assert result.final_grade is FinalGrade.POSSIBLE
         assert len(judge.calls) == 1
         assert judge.calls[0][0] == FIXED_REACTION_SMILES
-    elif config_name == ConfigType.RULES:
+    elif config_name == ConfigType.RULES_NO_DFT:
         assert result.final_grade is FinalGrade.IMPOSSIBLE
         assert len(judge.calls) == 0
     else:
