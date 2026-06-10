@@ -6,16 +6,9 @@ from enum import StrEnum
 from ..constants import FinalGrade, ToolResult, ToolStatus
 
 
-class Speed(StrEnum):
-    FAST = "fast"
-    CACHEABLE_SLOW = "cacheable"  # Can be fast or slow. Ideally, SLOW operations should instead be CACHEABLE_SLOW.
-    SLOW = "slow"
-
-
 class ReactionChecker(ABC):
     name: str
     stops_on_fail: bool = False
-    speed = Speed.FAST
 
     @abstractmethod
     def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
@@ -40,8 +33,6 @@ class ReactionChecker(ABC):
 
 
 class CacheableReactionChecker(ReactionChecker):
-    speed = Speed.CACHEABLE_SLOW
-
     def __init__(self, database: str | None = None) -> None:
         self.database = database
 

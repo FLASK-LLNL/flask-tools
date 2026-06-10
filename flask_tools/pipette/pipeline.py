@@ -13,7 +13,7 @@ from .verifiers import (
     ReactionChecker,
     ReactionEnergyChecker,
 )
-from .verifiers.base import Speed, CacheableReactionChecker
+from .verifiers.base import CacheableReactionChecker
 from .judge import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus
 from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
@@ -269,14 +269,11 @@ class GradingPipeline:
             if should_skip_remaining:
                 result = checker.skipped(skip_reason)
             else:
-                if checker.speed == Speed.CACHEABLE_SLOW:
-                    assert isinstance(checker, CacheableReactionChecker)
                 try:
                     if tiered_run:
                         result = None
                         has_cache = isinstance(checker, CacheableReactionChecker)
-                        is_slow = checker.speed in (Speed.SLOW, Speed.CACHEABLE_SLOW)
-                        if has_cache or is_slow:
+                        if has_cache:
                             if has_cache:
                                 result = checker.check_cache(rxn_smiles)
                             if result is None:

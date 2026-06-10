@@ -13,7 +13,6 @@ from flask_tools.pipette.pipeline import (
     build_default_pipeline,
     resolve_tool_list,
 )
-from flask_tools.pipette.verifiers.base import Speed
 from conftest import RecordingJudge
 
 # todo check this file
@@ -38,12 +37,9 @@ class StubChecker(ReactionChecker):
 
 
 class RoutingChecker(ReactionChecker):
-    def __init__(
-        self, name: str, handler, *, speed=Speed.FAST, stops_on_fail: bool = False
-    ) -> None:
+    def __init__(self, name: str, handler, *, stops_on_fail: bool = False) -> None:
         self.name = name
         self._handler = handler
-        self.speed = speed
         self.stops_on_fail = stops_on_fail
         self.calls: list[str] = []
 
@@ -234,7 +230,6 @@ def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results
             RoutingChecker(
                 "reaction_energy",
                 lambda _rxn_smiles, _: _pass_result("reaction_energy"),
-                speed=Speed.SLOW,
             ),
         ],
         config=PipetteConfig(mode="exact"),
@@ -310,7 +305,6 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
         #     comment="Energy passed.",
         # ),
         make_re_res,
-        speed=Speed.SLOW,
     )
 
     class StubReactionFixer:
