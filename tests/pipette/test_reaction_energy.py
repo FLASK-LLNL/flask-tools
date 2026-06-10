@@ -27,7 +27,7 @@ def _make_config() -> PipetteConfig:
 
 
 def _config_with_fake_dft_enabled() -> PipetteConfig:
-    return PipetteConfig(rules=RulesConfig(enable_fake_dft=True))
+    return PipetteConfig(rules=RulesConfig(use_dft=True))
 
 
 def test_csv_molecule_energy_store_looks_up_reaction_energy(

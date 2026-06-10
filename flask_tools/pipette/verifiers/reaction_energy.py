@@ -34,12 +34,6 @@ class DFTExecutor(Protocol):
     def run(self, rxn_smiles: str) -> MoleculeEnergyRecord: ...
 
 
-class FakeDFTExecutor:
-    def run(self, rxn_smiles: str) -> MoleculeEnergyRecord:
-        time.sleep(2)
-        return MoleculeEnergyRecord(smi=rxn_smiles, energy_ev=100.0, source="fake_dft")
-
-
 @dataclass
 class CSVCache:
     path: Path
@@ -156,8 +150,6 @@ class ReactionEnergyChecker(CacheableReactionChecker):
                 )
         if dft_executor is not None:
             self.dft_executor = dft_executor
-        elif self.config.rules.enable_fake_dft:
-            self.dft_executor = FakeDFTExecutor()
         else:
             raise ValueError("DFT executor is required for reaction energy checks.")
 
@@ -220,13 +212,6 @@ class ReactionEnergyChecker(CacheableReactionChecker):
     # todo: remove ReactionEnergyRecord. it's unneeded right now. would only be useful if there was a tool that gave reaction energy directly instead of molecule energies.
     def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
         """If using fake dft, return a fake passing result"""
-        if isinstance(self.dft_executor, FakeDFTExecutor):
-            return ToolResult(
-                name=self.name,
-                status=ToolStatus.PASS,
-                data={"energy_difference_ev_mol": -100, "source": None},
-                comment="Fake result from using fake dft .",
-            )
         reactants, _, products = parse_reaction_smi(
             rxn_smiles, ret_mol=False
         )  # strings

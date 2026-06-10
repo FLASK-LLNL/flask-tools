@@ -28,7 +28,7 @@ def enable_fake_dft_for_default_test_configs(monkeypatch) -> None:
     def patched_init(self, *args, **kwargs) -> None:
         original_init(self, *args, **kwargs)
         if "rules" not in kwargs and len(args) < 4:
-            self.rules.enable_fake_dft = True
+            self.rules.use_dft = True
 
     monkeypatch.setattr(PipetteConfig, "__init__", patched_init)
 

@@ -16,7 +16,7 @@ Optionally one of:
     "LLM_BASE_URL"
     "PIPETTE_LLM_BASE_URL"
 
-Run with (default) --config llm-judge-no-dft to skip dft, llm-judge to use dft, or default-exact to use a rule based assesment instead of a final LLM judge
+Run with (default) --config llm-judge to skip dft, llm-judge-with-dft to use dft, or rules to use a rule based assesment instead of a final LLM judge
 
 Example rxn for caffeine, Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C which will require LLM fixing
 to balance
@@ -35,7 +35,7 @@ from flask_tools.pipette.config import load_config, ConfigType
 @click.option(
     "--config",
     default=ConfigType.LLM_JUDGE_NO_DFT,
-    help="Path to config yaml file, or llm-judge-no-dft for default settings",
+    help="Path to config yaml file, or llm-judge for default settings",
 )
 @click.option(
     "--transport",

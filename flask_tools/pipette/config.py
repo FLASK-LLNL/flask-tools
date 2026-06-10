@@ -45,7 +45,7 @@ class RulesConfig:
     reaction_energy_max_ev_mol: float = (
         0.5  # Permissive. Most rxns are below 0, but some that need heating up can be positive
     )
-    enable_fake_dft: bool = False
+    use_dft: bool = False
 
     # All the from_mapping() is annoying, could this be better?
     @classmethod
@@ -59,7 +59,7 @@ class RulesConfig:
             reaction_energy_max_ev_mol=mapping.get(
                 "reaction_energy_max_ev_mol", cls.reaction_energy_max_ev_mol
             ),
-            enable_fake_dft=mapping.get("enable_fake_dft", cls.enable_fake_dft),
+            use_dft=mapping.get("use_dft", cls.use_dft),
         )
 
 
@@ -273,11 +273,11 @@ class PipetteConfig:
 
     @classmethod
     def exact_default_path(cls) -> Path:
-        return package_config_path("exact.yaml")
+        return package_config_path("exact_no_dft.yaml")
 
     @classmethod
     def ai_default_path(cls) -> Path:
-        return package_config_path("ai_judge.yaml")
+        return package_config_path("ai_judge_with_dft.yaml")
 
     @classmethod
     def from_default_exact_yaml(cls) -> PipetteConfig:
@@ -293,12 +293,12 @@ def load_config(config_arg: str) -> PipetteConfig:
         return PipetteConfig.from_default_ai_yaml()
     elif config_arg == ConfigType.LLM_JUDGE_NO_DFT:
         return PipetteConfig.from_yaml(package_config_path("ai_judge_no_dft.yaml"))
-    elif config_arg == ConfigType.DEFAULT_EXACT:
+    elif config_arg == ConfigType.RULES:
         return PipetteConfig.from_default_exact_yaml()
     return PipetteConfig.from_yaml(config_arg)
 
 
 class ConfigType(StrEnum):
-    DEFAULT_EXACT = "default-exact"
+    RULES = "rules"
     LLM_JUDGE = "llm-judge"
-    LLM_JUDGE_NO_DFT = "llm-judge-no-dft"
+    LLM_JUDGE_NO_DFT = "llm-judge"

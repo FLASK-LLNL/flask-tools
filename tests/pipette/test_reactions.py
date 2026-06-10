@@ -28,7 +28,7 @@ def _mock_caffeine() -> ReactionFix:
     "config_name",
     [
         ConfigType.LLM_JUDGE,
-        ConfigType.DEFAULT_EXACT,
+        ConfigType.RULES,
     ],
 )
 def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
@@ -49,7 +49,7 @@ def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) 
         assert result.final_grade is FinalGrade.POSSIBLE
         assert len(judge.calls) == 1
         assert judge.calls[0][0] == FIXED_REACTION_SMILES
-    elif config_name == ConfigType.DEFAULT_EXACT:
+    elif config_name == ConfigType.RULES:
         assert result.final_grade is FinalGrade.IMPOSSIBLE
         assert len(judge.calls) == 0
     else:

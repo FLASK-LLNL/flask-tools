@@ -45,7 +45,7 @@ def test_grade_reaction_uses_default_exact_yaml_and_returns_batch(monkeypatch) -
         fake_build_default_pipeline,
     )
 
-    result = grade_reaction(["CCO>>CC=O", "CC>>C=C"], ConfigType.DEFAULT_EXACT)
+    result = grade_reaction(["CCO>>CC=O", "CC>>C=C"], ConfigType.RULES)
 
     assert [item.short_reason for item in result] == ["test.CCO>>CC=O", "test.CC>>C=C"]
     assert captured["loaded_default"] is True

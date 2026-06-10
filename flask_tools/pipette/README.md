@@ -42,23 +42,21 @@ final decision.
 ### AI-Judge Mode
 
 ```shell
-python -m flask_tools.pipette.grade_rxn --rxn-smi '[HH].FF>>F.F' --config llm-judge-no-dft
-# Or with --debug which uses fake DFT reaction energies
-python -m flask_tools.pipette.grade_rxn --rxn-smi '[HH].FF>>F.F' --config llm-judge --debug
+python -m flask_tools.pipette.grade_rxn --rxn-smi '[HH].FF>>F.F' --config llm-judge
 ```
+ Note, DFT is not implemented so you muse use llm-judge or rules
 
 ```python
 from flask_tools.pipette.grade_rxn import grade_reaction
 from flask_tools.pipette.config import load_config
 
-result = grade_reaction(["[HH].FF>>F.F"], config='llm-judge-no-dft')  # or config=file.yaml
+result = grade_reaction(["[HH].FF>>F.F"], config='llm-judge')  # or config=file.yaml
 
 # Or
 config = load_config('llm-judge')
-config.rules.enable_fake_dft = True  # Reaction energy will always return a passing value
 result = grade_reaction(["[HH].FF>>F.F"], config=config)
 ```
-This loads the config from `pipette/assets/llm-judge-no-dft.yaml`.
+This loads the config from `pipette/assets/llm-judge.yaml`.
 
 Configs can also be a custom yaml file.
 
@@ -71,7 +69,7 @@ The "ai" mode will send to an LLM similar tool results to what the exact mode wo
 #### Without DFT Reaction Energy Set up
 
 ```shell
-python -m flask_tools.pipette.grade_rxn --rxn-smi 'CCO>>CC=O' --config default-exact --debug  # --debug uses fake DFT reaction energies
+python -m flask_tools.pipette.grade_rxn --rxn-smi 'CCO>>CC=O' --config rules # Also no DFT with this config
 ```
 Or
 
@@ -79,8 +77,8 @@ Or
 from flask_tools.pipette.grade_rxn import grade_reaction
 from flask_tools.pipette.config import load_config
 
-config = load_config('default-exact')  # Rule-based decision
-config.rules.enable_fake_dft = True  # Reaction energy will always return a passing value
+config = load_config('rules')  # Rule-based decision
+config.rules.use_dft = True  # Reaction energy will always return a passing value
 results = grade_reaction(["[HH].FF>>F.F"], config=config)
 for result in results:
   print(result.final_grade.value)

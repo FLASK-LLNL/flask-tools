@@ -135,7 +135,7 @@ def _load_reaction_smiles_lines(path: Path) -> list[str]:
 
 
 def _apply_debug_overrides(config: PipetteConfig) -> PipetteConfig:
-    config.rules.enable_fake_dft = True
+    config.rules.use_dft = True
     return config
 
 
@@ -158,14 +158,9 @@ def main() -> list[dict]:
     )
     parser.add_argument(
         "--config",
-        default="default-exact",
+        default="rules",
         help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE}', "
-        f"'{ConfigType.LLM_JUDGE_NO_DFT}, or '{ConfigType.DEFAULT_EXACT}'.",
-    )
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Set rules.enable_fake_dft=true to allow the fake DFT fallback.",
+        f"'{ConfigType.LLM_JUDGE_NO_DFT}, or '{ConfigType.RULES}'.",
     )
     parser.add_argument(
         "--verbose",
@@ -176,8 +171,6 @@ def main() -> list[dict]:
 
     rxn_smiles_list = args.rxn_smi or load_reaction_smiles_file(args.file)
     config = load_config(args.config)
-    if args.debug:
-        config = _apply_debug_overrides(config)
     results = grade_reaction(rxn_smiles_list, config=config, verbose=True)
     output = _build_output_records(rxn_smiles_list, results)
     if args.verbose:

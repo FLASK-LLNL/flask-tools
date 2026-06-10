@@ -71,7 +71,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     assert config.rules.stop_on_hard_fail is False
     assert config.rules.mass_tolerance_atoms == 2
     assert config.rules.reaction_energy_max_ev_mol == 9.5
-    assert config.rules.enable_fake_dft is True
+    assert config.rules.use_dft is True
     assert config.solvent_catalog_path == (tmp_path / "solvents.csv").resolve()
 
     judge = LLMJudge(
