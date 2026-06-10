@@ -16,7 +16,7 @@ from flask_tools.pipette.pipeline import (
     resolve_tool_list,
 )
 from conftest import RecordingJudge
-from tests.pipette import helpers
+import helpers
 
 
 # todo check this file

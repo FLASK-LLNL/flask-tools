@@ -44,3 +44,8 @@ test = ["pytest", "pytest-asyncio", "pytest-mock", "responses", "httpx", "reques
 pds = ["flask-tools[autogen,rdkit,chemprice]"]
 
 all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds]"]
+
+[tool.pytest]
+markers = [
+    "llm_query: a test that requires LLM API calls",
+]

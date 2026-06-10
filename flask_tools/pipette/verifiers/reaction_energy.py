@@ -108,7 +108,7 @@ class MoleculeEnergyStore:
         for record in records:  # noqa
             inchi = smiles_to_inchi_key(record.smi)
             update[inchi] = {
-                "smiles": record.smi,
+                "inchi_key": inchi,
                 "energy_ev_mol": record.energy_ev,
             }
             self.energies_by_inchi_key[inchi] = record.energy_ev
