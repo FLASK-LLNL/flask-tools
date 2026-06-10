@@ -3,7 +3,7 @@ mode: ai
 llm_judge:
   allow_fail:
     - exact_match
-rules:
+settings:
   stop_on_hard_fail: true
   mass_tolerance_atoms: 0
   reaction_energy_max_ev_mol: 5.0

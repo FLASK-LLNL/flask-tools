@@ -17,7 +17,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
             tool_list:
               - basic_smiles_validation
               - reaction_energy
-            tools_setting:
+            tools_settings:
               reaction_energy:
                 database: fake_molecule_energies.csv
             llm_judge:
@@ -50,7 +50,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
 
     # Test that paths are relative to the yaml file
     assert (
-        config.tools_setting.reaction_energy.database
+        config.tools_settings.reaction_energy.database
         == (tmp_path / "fake_molecule_energies.csv").resolve()
     )
     assert config.llm_judge.prompt_path == (tmp_path / "judge-prompt.txt").resolve()

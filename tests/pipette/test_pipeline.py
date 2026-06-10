@@ -6,7 +6,7 @@ import pandas as pd
 import flask_tools.pipette.verifiers.reaction_energy
 from flask_tools.pipette.verifiers import ReactionEnergyChecker
 from flask_tools.pipette.verifiers.base import ReactionChecker, CacheableReactionChecker
-from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig, RulesConfig
+from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig, TopLevelConfig
 from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
 from flask_tools.pipette.reaction_fixer import ReactionFix
 from flask_tools.pipette.pipeline import (
@@ -88,7 +88,7 @@ def test_resolve_tool_list_rejects_unknown_and_duplicate_tools() -> None:
 
 def test_build_default_pipeline_uses_tool_list_order() -> None:
     config = PipetteConfig(
-        tool_list=["third", "first"], rules=RulesConfig(use_dft=False)
+        tool_list=["third", "first"], rules=TopLevelConfig(use_dft=False)
     )
     pipeline = build_default_pipeline(
         config=config,
@@ -109,7 +109,7 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
 #     database_path = tmp_path / "fake_molecule_energies.csv"
 #     database_path.write_text("inchi_key,energy_ev_mol\nTEST,-1.0\n", encoding="utf-8")
 #     config = PipetteConfig(tool_list=["reaction_energy"])
-#     config.tools_setting.reaction_energy.database = database_path
+#     config.tools_settings.reaction_energy.database = database_path
 #
 #     pipeline = build_default_pipeline(config=config)
 #

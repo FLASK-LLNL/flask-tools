@@ -42,7 +42,7 @@ def resolve_tool_list(
     if use_dft:
         assert "reaction_energy" in available_tools
     if not use_dft:
-        available_tools = [t for t in available_tools if t is not "reaction_energy"]
+        available_tools = [t for t in available_tools if t != "reaction_energy"]
     if tool_list == "all":
         return list(available_tools)
 
@@ -530,8 +530,8 @@ def build_default_pipeline(
         "reaction_energy": lambda current: ReactionEnergyChecker(
             current,
             database=(
-                str(current.tools_setting.reaction_energy.database)
-                if current.tools_setting.reaction_energy.database is not None
+                str(current.tools_settings.reaction_energy.database)
+                if current.tools_settings.reaction_energy.database is not None
                 else None
             ),
         ),

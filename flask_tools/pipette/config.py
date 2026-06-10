@@ -39,7 +39,7 @@ def _resolve_optional_path(path_value: object, *, base_dir: Path) -> Path | None
 
 
 @dataclass
-class RulesConfig:
+class TopLevelConfig:
     stop_on_hard_fail: bool = True
     mass_tolerance_atoms: int = 0
     reaction_energy_max_ev_mol: float = (
@@ -49,8 +49,8 @@ class RulesConfig:
 
     # All the from_mapping() is annoying, could this be better?
     @classmethod
-    def from_mapping(cls, data: object) -> RulesConfig:
-        mapping = _validate_mapping_format(data, name="rules")
+    def from_mapping(cls, data: object) -> TopLevelConfig:
+        mapping = _validate_mapping_format(data, name="settings")
         return cls(
             stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
             mass_tolerance_atoms=mapping.get(
@@ -181,7 +181,7 @@ class ReactionEnergyConfig:
         *,
         base_dir: Path,
     ) -> ReactionEnergyConfig:
-        mapping = _validate_mapping_format(data, name="tools_setting.reaction_energy")
+        mapping = _validate_mapping_format(data, name="tools_settings.reaction_energy")
         return cls(
             database=_resolve_optional_path(mapping.get("database"), base_dir=base_dir),
         )
@@ -198,7 +198,7 @@ class ToolsConfig:
         *,
         base_dir: Path,
     ) -> ToolsConfig:
-        mapping = _validate_mapping_format(data, name="tools_setting")
+        mapping = _validate_mapping_format(data, name="tools_settings")
         return cls(
             reaction_energy=ReactionEnergyConfig.from_mapping(
                 mapping.get("reaction_energy"),
@@ -215,8 +215,8 @@ class PipetteConfig:
     llm_reaction_fixer: LLMReactionFixerConfig = field(
         default_factory=LLMReactionFixerConfig
     )
-    rules: RulesConfig = field(default_factory=RulesConfig)
-    tools_setting: ToolsConfig = field(default_factory=ToolsConfig)
+    rules: TopLevelConfig = field(default_factory=TopLevelConfig)
+    tools_settings: ToolsConfig = field(default_factory=ToolsConfig)
     solvent_catalog_path: Path = field(
         default_factory=lambda: package_data_path("solvents.csv")
     )
@@ -255,9 +255,9 @@ class PipetteConfig:
                 mapping.get("llm_reaction_fixer"),
                 base_dir=resolved_base_dir,
             ),
-            rules=RulesConfig.from_mapping(mapping.get("rules")),
-            tools_setting=ToolsConfig.from_mapping(
-                mapping.get("tools_setting"),
+            rules=TopLevelConfig.from_mapping(mapping.get("rules")),
+            tools_settings=ToolsConfig.from_mapping(
+                mapping.get("tools_settings"),
                 base_dir=resolved_base_dir,
             ),
             solvent_catalog_path=solvent_catalog_path
