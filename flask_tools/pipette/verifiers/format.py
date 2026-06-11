@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 from ..smiles import parse_reaction_smi
 
 
@@ -14,11 +14,11 @@ class BasicSmilesValidationChecker(ReactionChecker):
     name = "basic_smiles_validation"
     stops_on_fail = True
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         fail_res = ToolResult(
             name=self.name,
             status=ToolStatus.FAIL,
-            comment="tbd",
+            comment="filled-later",
         )
         try:
             reactants, _, products = parse_reaction_smi(rxn_smiles)

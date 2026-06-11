@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 from ..smiles import parse_reaction_smi
 
 
@@ -33,7 +33,7 @@ class ChargeConservationChecker(ReactionChecker):
     name = "charge_conservation"
     stops_on_fail = True
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         try:
             diff = charge_difference(rxn_smiles)
         except Exception as exc:

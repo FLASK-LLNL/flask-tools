@@ -45,7 +45,10 @@ pds = ["flask-tools[autogen,rdkit,chemprice]"]
 
 all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds]"]
 
-[tool.pytest]
+#[tool.pytest]
+[tool.pytest.ini_options]
 markers = [
     "llm_query: a test that requires LLM API calls",
 ]
+# Do not run the llm ones by default
+addopts = '-m "not llm_query"'

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass, field
 import inspect
 import traceback
 
@@ -15,7 +14,7 @@ from .verifiers import (
 )
 from .verifiers.base import CacheableReactionChecker
 from .judge import AsyncLLMJudge
-from .constants import ReactionGrade, ToolResult, ToolStatus
+from .constants import ReactionGrade, ToolResult, ToolStatus, ToolResultsDict
 from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
 from .smiles import canonicalize_reaction_smiles
 from .llm_query import _run_coroutine_sync
@@ -151,7 +150,7 @@ class GradingPipeline:
     async def _attempt_llm_fix_async(
         self,
         rxn_smiles: str,
-        context: dict[str, ToolResult],
+        tool_results: ToolResultsDict,
     ) -> tuple[ToolResult, str | None] | None:
         if self.reaction_fixer is None:
             return None
@@ -159,7 +158,7 @@ class GradingPipeline:
         try:
             fix_result = self.reaction_fixer.fix(
                 rxn_smiles,
-                list(context.values()),
+                list(tool_results.values()),
             )
             fix = await fix_result if inspect.isawaitable(fix_result) else fix_result
         except Exception as exc:
@@ -193,8 +192,8 @@ class GradingPipeline:
     async def _finalize_grade_async(
         self,
         rxn_smiles: str,
-        context: dict[str, ToolResult],
-        prefix_results: list[tuple[str, str, ToolResult]],
+        all_tool_results: ToolResultsDict,
+        before_llm_fix_results: ToolResultsDict,  # Unused, but could be used to exclude the not-fixed results  # noqa
     ) -> ReactionGrade:
         """Exact grading happens without the prefix_results, namely the results before llm-fix of rxn balance.
         AI grading does use it, because it should be smart enough to deal with it.
@@ -202,14 +201,12 @@ class GradingPipeline:
         if self.judge is None:
             raise ValueError("AI mode requires an LLM judge implementation.")
 
-        results = [pr[-1] for pr in prefix_results] + list(context.values())
         judge_result = self.judge.judge(
             rxn_smiles,
-            results,
+            list(all_tool_results.values()),
         )
         res = await judge_result if inspect.isawaitable(judge_result) else judge_result
         assert res is not None
-        res = self._with_prefix_results(res, prefix_results)
         assert isinstance(res, ReactionGrade)
         return res
 
@@ -218,21 +215,15 @@ class GradingPipeline:
         rxn_smiles: str,
         *,
         fix_attempted: bool = False,
-        prefix_results: list[tuple[str, str, ToolResult]] | None = None,
+        previous_tool_results: ToolResultsDict | None = None,
     ) -> ReactionGrade:
-        prefix = list(prefix_results or [])
-        prefix_smiles_checkers = {
-            (smi, checker_name): res for smi, checker_name, res in prefix
-        }
-        context: dict[str, ToolResult] = {}
+        previous_tool_results = previous_tool_results or {}
+        all_tool_results: ToolResultsDict = previous_tool_results.copy()
         should_skip_remaining = False
         skip_reason = ""
 
         for checker in self.checkers:
-            if (rxn_smiles, checker.name) in prefix_smiles_checkers:
-                context[checker.name] = prefix_smiles_checkers[
-                    (rxn_smiles, checker.name)
-                ]
+            if (rxn_smiles, checker.name) in previous_tool_results:
                 continue
             if should_skip_remaining:
                 result = checker.skipped(skip_reason)
@@ -241,9 +232,9 @@ class GradingPipeline:
                     is_cacheable = isinstance(checker, CacheableReactionChecker)
                     result = None
                     if is_cacheable:
-                        result = checker.check_cache(rxn_smiles)
+                        result = checker.check_cache(rxn_smiles)  # noqa
                     if result is None:
-                        result = checker.run(rxn_smiles, context)
+                        result = checker.run(rxn_smiles, all_tool_results)
                 except Exception as exc:
                     result = checker.errored(
                         f"{checker.name} raised an unexpected error: {exc}",
@@ -254,38 +245,36 @@ class GradingPipeline:
                     should_skip_remaining = True
                     skip_reason = f"Skipped after hard failure in {checker.name}."
 
-            prefix.append((rxn_smiles, checker.name, result))
-            context[checker.name] = result
+            # prefix.append((rxn_smiles, checker.name, result))
+            all_tool_results[(rxn_smiles, checker.name)] = result
 
             # Reaction fixing / infilling of byproducts
             # If LLM fixing returned a value, call new grade_one with new rxn and
             # it's main tool result list will start from the new rxn
             if (
-                checker.name == "mass_conservation"
+                checker.name == "exact_match"
                 and not fix_attempted
-                and self._should_try_llm_fix(context)
+                # and self._should_try_llm_fix(context)
             ):
-                if (rxn_smiles, "llm_reaction_fix") in prefix_smiles_checkers:
+                if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
                     raise RuntimeError("llm_reaction_fix already ran")
                 fix_attempt = await self._attempt_llm_fix_async(
                     rxn_smiles,
-                    context,
+                    all_tool_results,
                 )
                 if fix_attempt is not None:
                     fix_result, fixed_rxn_smiles = fix_attempt
-                    if fixed_rxn_smiles is None:
-                        context[fix_result.name] = fix_result
-                    else:
+                    all_tool_results[(rxn_smiles, fix_result.name)] = fix_result
+                    if fixed_rxn_smiles is not None:
                         return await self.grade_one_async(
                             fixed_rxn_smiles,
                             fix_attempted=True,
-                            prefix_results=[
-                                *prefix,
-                                (rxn_smiles, "llm_reaction_fix", fix_result),
-                            ],
+                            previous_tool_results=all_tool_results,
                         )
 
-        return await self._finalize_grade_async(rxn_smiles, context, prefix)
+        return await self._finalize_grade_async(
+            rxn_smiles, all_tool_results, previous_tool_results
+        )
 
     def grade_one(
         self,
@@ -298,7 +287,7 @@ class GradingPipeline:
             self.grade_one_async(
                 rxn_smiles,
                 fix_attempted=fix_attempted,
-                prefix_results=prefix_results,
+                previous_tool_results=prefix_results,
             )
         )
 
