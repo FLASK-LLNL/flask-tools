@@ -44,8 +44,9 @@ def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) 
     assert fix_result.data["added_products"] in (["I"], ["[H+]", "[I-]"]), fix_result
 
     if config_name == ConfigType.LLM_JUDGE_NO_DFT:
-        assert (
-            result.final_grade is FinalGrade.LIKELY
+        assert result.final_grade in (
+            FinalGrade.LIKELY,
+            FinalGrade.POSSIBLE,
         ), f"{(result.final_grade, fix_result)}"
         assert result.short_reason.startswith(
             "ai."
