@@ -113,7 +113,8 @@ class GradingPipeline:
             basic.status is ToolStatus.PASS
             and exact_match.status is ToolStatus.UNKNOWN
             and charge.status is ToolStatus.PASS
-            and mass.status is ToolStatus.FAIL
+            # and mass.status is ToolStatus.FAIL
+            and mass.status in (ToolStatus.FAIL, ToolStatus.POTENTIAL)
         )
 
     @staticmethod

@@ -27,7 +27,7 @@ from loguru import logger
 
 from lc_conductor.tool_registration import register_tool_server
 from flask_tools.utils.server_utils import get_hostname
-from flask_tools.pipette.grade_rxn import grade_reaction_json, _apply_debug_overrides
+from flask_tools.pipette.grade_rxn import grade_reaction_json
 from flask_tools.pipette.config import load_config, ConfigType
 
 
@@ -54,9 +54,6 @@ from flask_tools.pipette.config import load_config, ConfigType
 @click.option(
     "--copilot-host", type=str, default=None, help="Host to the running copilot backend"
 )
-@click.option(
-    "--debug", type=bool, help="Enable debug mode which uses a fake, always-passing DFT"
-)
 def main(
     config: str,
     transport: str,
@@ -65,7 +62,6 @@ def main(
     name: str,
     copilot_port: int,
     copilot_host: str | None,
-    debug: bool,
 ):
     if host is None:
         _, host = get_hostname()
@@ -86,8 +82,6 @@ def main(
     )
 
     resolved_config = load_config(config)
-    if debug:
-        resolved_config = _apply_debug_overrides(resolved_config)
 
     @mcp.tool()
     def grade_reaction(

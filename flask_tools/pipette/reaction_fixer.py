@@ -26,6 +26,7 @@ class ReactionFix:
     fixed_reaction_smiles: str
     removed_agents: list[str]
     added_reactants: list[str]
+    removed_products: list[str]
     added_products: list[str]
     reasoning_summary: str
 
@@ -123,6 +124,10 @@ class BaseLLMReactionFixer:
             added_reactants=self._multiset_difference(
                 self._canonical_component_list(fixed_reactants),
                 self._canonical_component_list(original_reactants),
+            ),
+            removed_products=self._multiset_difference(
+                self._canonical_component_list(original_products),
+                self._canonical_component_list(fixed_products),
             ),
             added_products=self._multiset_difference(
                 self._canonical_component_list(fixed_products),
