@@ -15,7 +15,6 @@ from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
 from flask_tools.pipette.reaction_fixer import ReactionFix
 from flask_tools.pipette.pipeline import (
     GradingPipeline,
-    PendingReaction,
     build_default_pipeline,
     resolve_tool_list,
 )
@@ -132,52 +131,8 @@ def test_ai_mode_stops_after_unallowed_tool_error() -> None:
     )
 
 
-def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results() -> (
-    None
-):
-    # Checks that results contain pre-llm-fixed results (Keep this even after refactoring tiered run away)
-    rxn_smiles = "CCO>>CC=O"
-    # peggy: these can be StubCheckers instead of RoutingChecker. And it doesn't need to be _pass_result necessarily, although it more closely replicaetes the usual return type
-    pipeline = GradingPipeline(
-        checkers=[
-            RoutingChecker(
-                "basic_smiles_validation",
-                lambda _rxn_smiles, _: _pass_result("basic_smiles_validation"),
-            ),
-            RoutingChecker(
-                "exact_match", lambda _rxn_smiles, _: _pass_result("exact_match")
-            ),
-            RoutingChecker(
-                "charge_conservation",
-                lambda _rxn_smiles, _: _pass_result("charge_conservation"),
-            ),
-            CacheableRoutingChecker(
-                "reaction_energy",
-                lambda _rxn_smiles, _: None,  # return None = Not found in cache
-            ),
-        ],
-        config=PipetteConfig(mode="exact"),
-    )
-
-    pending = pipeline.grade_one(
-        rxn_smiles, tiered_run=True
-    )  # tiered_run: Will stop if cached result not found
-
-    assert isinstance(pending, PendingReaction)
-    assert pending.rxn_smiles == rxn_smiles
-    assert pending.prefix_results == [
-        (
-            rxn_smiles,
-            "basic_smiles_validation",
-            _pass_result("basic_smiles_validation"),
-        ),
-        (rxn_smiles, "exact_match", _pass_result("exact_match")),
-        (rxn_smiles, "charge_conservation", _pass_result("charge_conservation")),
-    ]
-
-
 @pytest.mark.llm_query
-def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow(
+def test_pipeline_fixed_reaction(
     tests_relative_path,
 ) -> None:
     # peggy: this could go into the e2e tests... what to name the e2e? pipeline? rxn?
@@ -265,7 +220,7 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow(
         reaction_fixer=fixer,  # noqa
     )
 
-    result = next(pipeline.grade([original], tiered_run=True))
+    result = next(pipeline.grade([original]))
 
     # debugging: i think two runs have all but the llm judge result be different... which sucks
     dbg_file = tests_relative_path / "tool_res.json"

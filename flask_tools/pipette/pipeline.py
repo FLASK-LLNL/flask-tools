@@ -25,14 +25,6 @@ LLMJudge = AsyncLLMJudge
 LLMReactionFixer = AsyncLLMReactionFixer
 
 
-@dataclass
-class PendingReaction:
-    """Reaction for which some tools have been run, but not all"""
-
-    rxn_smiles: str
-    prefix_results: list[tuple[str, str, ToolResult]] = field(default_factory=list)
-
-
 def resolve_tool_list(
     tool_list: str | list[str],
     available_tools: list[str],
@@ -126,17 +118,12 @@ class GradingPipeline:
 
     @staticmethod
     def _with_prefix_results(
-        result: ReactionGrade | PendingReaction,
+        result: ReactionGrade,
         prefix_results: list[tuple[str, str, ToolResult]],
-    ) -> ReactionGrade | PendingReaction:
+    ) -> ReactionGrade:
         """Combine the tool results from the prefix_results with the results"""
         if not prefix_results:
             return result
-        if isinstance(result, PendingReaction):
-            return PendingReaction(
-                rxn_smiles=result.rxn_smiles,
-                prefix_results=[*prefix_results, *result.prefix_results],
-            )
         return ReactionGrade(
             final_grade=result.final_grade,
             short_reason=result.short_reason,
@@ -228,16 +215,10 @@ class GradingPipeline:
     async def grade_one_async(
         self,
         rxn_smiles: str,
-        tiered_run: bool = False,
         *,
         fix_attempted: bool = False,
         prefix_results: list[tuple[str, str, ToolResult]] | None = None,
-    ) -> ReactionGrade | PendingReaction:
-        """
-        tiered_run: Will return None if there are long-running checks in the pipeline without cached result
-        prefix_results: grade_one can be called twice for one reaction if tiered_run is True. In that case, the tool
-            results from the first call will be passed in here.
-        """
+    ) -> ReactionGrade:
         prefix = list(prefix_results or [])
         prefix_smiles_checkers = {
             (smi, checker_name): res for smi, checker_name, res in prefix
@@ -256,21 +237,11 @@ class GradingPipeline:
                 result = checker.skipped(skip_reason)
             else:
                 try:
-                    if tiered_run:
-                        result = None
-                        has_cache = isinstance(checker, CacheableReactionChecker)
-                        if has_cache:
-                            if has_cache:
-                                result = checker.check_cache(rxn_smiles)
-                            if result is None:
-                                # This returns without the current context. But that should only contain fast results, so it's ok if they are repeated
-                                # But it would be a nice improvement if it did.
-                                return PendingReaction(
-                                    rxn_smiles=rxn_smiles, prefix_results=prefix
-                                )
-                        else:
-                            result = checker.run(rxn_smiles, context)
-                    else:
+                    is_cacheable = isinstance(checker, CacheableReactionChecker)
+                    result = None
+                    if is_cacheable:
+                        result = checker.check_cache(rxn_smiles)
+                    if result is None:
                         result = checker.run(rxn_smiles, context)
                 except Exception as exc:
                     result = checker.errored(
@@ -306,7 +277,6 @@ class GradingPipeline:
                     else:
                         return await self.grade_one_async(
                             fixed_rxn_smiles,
-                            tiered_run=tiered_run,
                             fix_attempted=True,
                             prefix_results=[
                                 *prefix,
@@ -319,50 +289,22 @@ class GradingPipeline:
     def grade_one(
         self,
         rxn_smiles: str,
-        tiered_run: bool = False,
         *,
         fix_attempted: bool = False,
         prefix_results: list[tuple[str, str, ToolResult]] | None = None,
-    ) -> ReactionGrade | PendingReaction:
+    ) -> ReactionGrade:
         return _run_coroutine_sync(
             self.grade_one_async(
                 rxn_smiles,
-                tiered_run=tiered_run,
                 fix_attempted=fix_attempted,
                 prefix_results=prefix_results,
             )
         )
 
-    def grade(
-        self, rxn_smiles_list: list[str], tiered_run=True
-    ) -> Iterator[ReactionGrade]:
-        """tiered_run: Simple two tiered/two phase scheduling. Will first yield answers for molecules that can avoid
-        long-running checks, like DFT. On the second pass all checks will run for remaining molecules.  If False,
-        run all checks in one phase.
-        """
-        run_later: list[PendingReaction] = []
+    def grade(self, rxn_smiles_list: list[str]) -> Iterator[ReactionGrade]:
         for rxn_smiles in rxn_smiles_list:
-            res = self.grade_one(rxn_smiles, tiered_run=tiered_run)
-            if isinstance(res, PendingReaction):
-                run_later.append(res)
-            else:
-                yield res
-        if tiered_run:
-            while run_later:
-                pending = run_later.pop()
-                fix_results = [
-                    result
-                    for _, _, result in pending.prefix_results
-                    if result.name == "llm_reaction_fix"
-                ]
-                res = self.grade_one(
-                    pending.rxn_smiles,
-                    tiered_run=False,
-                    fix_attempted=bool(fix_results),
-                    prefix_results=pending.prefix_results,
-                )
-                assert not isinstance(res, PendingReaction)
-                yield res
+            res = self.grade_one(rxn_smiles)
+            yield res
 
 
 def build_default_pipeline(
