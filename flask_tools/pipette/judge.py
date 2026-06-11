@@ -18,7 +18,9 @@ from .llm_query import query_task, query_task_async
 
 
 class ReactionGradeResponse(BaseModel):
-    final_grade: Literal["likely", "possible", "uncertain", "unlikely", "impossible"]
+    final_grade: Literal[
+        "likely", "possible but unlikely", "impossible", "uncertain/cannot determine"
+    ]
     short_reason: str = "ai.llm_judge"
     comment: str = ""
 

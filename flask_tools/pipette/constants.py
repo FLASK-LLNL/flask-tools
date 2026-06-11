@@ -52,10 +52,9 @@ class ToolStatus(str, Enum):
 
 class FinalGrade(str, Enum):
     LIKELY = "likely"
-    POSSIBLE = "possible"
-    UNCERTAIN = "uncertain"
-    UNLIKELY = "unlikely"
+    POSSIBLE = "possible but unlikely"
     IMPOSSIBLE = "impossible"
+    UNCERTAIN = "uncertain/cannot determine"
 
 
 @dataclass

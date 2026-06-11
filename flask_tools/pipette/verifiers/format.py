@@ -36,7 +36,7 @@ class BasicSmilesValidationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS,
-            grade_hint=FinalGrade.POSSIBLE,
+            grade_hint=FinalGrade.LIKELY,
             data={
                 "reactant_count": len(reactants),
                 "product_count": len(products),

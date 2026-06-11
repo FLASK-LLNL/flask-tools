@@ -176,7 +176,7 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.POTENTIAL,
-                grade_hint=FinalGrade.POSSIBLE,
+                grade_hint=FinalGrade.UNCERTAIN,
                 data={
                     "mass_difference_amu": best_match["mass_amu"],
                     "element_difference": delta,

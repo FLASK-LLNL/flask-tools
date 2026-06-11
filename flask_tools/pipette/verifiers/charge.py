@@ -56,7 +56,7 @@ class ChargeConservationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS,
-            grade_hint=FinalGrade.LIKELY,
+            grade_hint=FinalGrade.UNCERTAIN,
             data={"charge_difference": 0},
             comment="Charge is conserved.",
         )

@@ -210,7 +210,6 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         )
         return self.result_from_energies(record)
 
-    # todo: remove ReactionEnergyRecord. it's unneeded right now. would only be useful if there was a tool that gave reaction energy directly instead of molecule energies.
     def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
         """If using fake dft, return a fake passing result"""
         reactants, _, products = parse_reaction_smi(

@@ -74,6 +74,7 @@ def grade_reaction(
     if isinstance(rxn_smiles_list, str):
         rxn_smiles_list = [rxn_smiles_list]
     res = _grade_reactions(rxn_smiles_list, config=config, judge=judge)
+    assert len(res) == len(rxn_smiles_list)
     if verbose:
         for rxn_smiles, result in zip(rxn_smiles_list, res, strict=True):
             print(f"{rxn_smiles}:\n{result}\n\n")
@@ -153,8 +154,8 @@ def main() -> list[dict]:
     )
     parser.add_argument(
         "--config",
-        default="rules",
-        help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE_WITH_DFT}', "
+        default=ConfigType.LLM_JUDGE_NO_DFT,
+        help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE_WITH_DFT}' (default), "
         f"or '{ConfigType.LLM_JUDGE_NO_DFT}.",
     )
     parser.add_argument(

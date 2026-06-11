@@ -147,7 +147,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "basic_smiles_validation",
           "status": "pass",
-          "grade_hint": "possible",
           "data": {
             "reactant_count": 2,
             "product_count": 1
@@ -158,7 +157,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "exact_match",
           "status": "unknown",
-          "grade_hint": null,
           "data": {},
           "comment": "No reaction database backend is configured.",
           "skipped_reason": null
