@@ -149,7 +149,6 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.ERROR,
-                grade_hint=FinalGrade.IMPOSSIBLE,
                 comment=f"Mass conservation could not be evaluated: {exc}",
             )
 
@@ -157,7 +156,6 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                grade_hint=FinalGrade.LIKELY,
                 data={
                     "mass_difference_amu": 0.0,
                     "element_difference": {},
@@ -176,7 +174,6 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.POTENTIAL,
-                grade_hint=FinalGrade.UNCERTAIN,
                 data={
                     "mass_difference_amu": best_match["mass_amu"],
                     "element_difference": delta,
@@ -199,7 +196,6 @@ class MassConservationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.FAIL,
-            grade_hint=FinalGrade.IMPOSSIBLE,
             data={
                 "mass_difference_amu": mass_difference,
                 "element_difference": delta,

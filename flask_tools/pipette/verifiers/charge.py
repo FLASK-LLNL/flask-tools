@@ -40,7 +40,6 @@ class ChargeConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.ERROR,
-                grade_hint=FinalGrade.IMPOSSIBLE,
                 comment=f"Charge conservation could not be evaluated: {exc}",
             )
 
@@ -48,7 +47,6 @@ class ChargeConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.FAIL,
-                grade_hint=FinalGrade.IMPOSSIBLE,
                 data={"charge_difference": diff},
                 comment=f"Charge is not conserved. Product minus reactant charge: {diff}.",
             )
@@ -56,7 +54,6 @@ class ChargeConservationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS,
-            grade_hint=FinalGrade.UNCERTAIN,
             data={"charge_difference": 0},
             comment="Charge is conserved.",
         )

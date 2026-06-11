@@ -42,7 +42,6 @@ class ExactMatchChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                grade_hint=FinalGrade.LIKELY,
                 data={
                     "found": {
                         "source": match.source,
@@ -59,7 +58,6 @@ class ExactMatchChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.POTENTIAL,
-                grade_hint=FinalGrade.LIKELY,
                 data={
                     "found": {
                         "source": match.source,

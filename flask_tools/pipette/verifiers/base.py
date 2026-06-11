@@ -26,7 +26,6 @@ class ReactionChecker(ABC):
         return ToolResult(
             name=self.name,
             status=ToolStatus.ERROR,
-            grade_hint=FinalGrade.IMPOSSIBLE,
             data={"traceback": traceback_text} if traceback_text else {},
             comment=reason,
         )

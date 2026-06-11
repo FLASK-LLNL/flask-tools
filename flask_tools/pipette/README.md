@@ -164,7 +164,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "charge_conservation",
           "status": "pass",
-          "grade_hint": "likely",
           "data": {
             "charge_difference": 0
           },
@@ -174,7 +173,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "mass_conservation",
           "status": "fail",
-          "grade_hint": "impossible",
           "data": {
             "mass_difference_amu": 127.912,
             "element_difference": {
@@ -191,7 +189,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "llm_reaction_fix",
           "status": "pass",
-          "grade_hint": null,
           "data": {
             "original_reaction_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
             "fixed_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
@@ -208,7 +205,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "basic_smiles_validation",
           "status": "pass",
-          "grade_hint": "possible",
           "data": {
             "reactant_count": 2,
             "product_count": 3
@@ -219,7 +215,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "exact_match",
           "status": "unknown",
-          "grade_hint": null,
           "data": {},
           "comment": "No reaction database backend is configured.",
           "skipped_reason": null
@@ -227,7 +222,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "charge_conservation",
           "status": "pass",
-          "grade_hint": "likely",
           "data": {
             "charge_difference": 0
           },
@@ -237,7 +231,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
         {
           "name": "mass_conservation",
           "status": "pass",
-          "grade_hint": "likely",
           "data": {
             "mass_difference_amu": 0.0,
             "element_difference": {},

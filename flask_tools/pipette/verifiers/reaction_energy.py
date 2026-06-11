@@ -171,7 +171,6 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS if passed else ToolStatus.FAIL,
-            grade_hint=FinalGrade.LIKELY if passed else FinalGrade.IMPOSSIBLE,
             data={
                 "energy_difference_ev_mol": record.energy_difference_ev_mol,
                 "source": record.source,

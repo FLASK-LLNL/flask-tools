@@ -61,7 +61,6 @@ class FinalGrade(str, Enum):
 class ToolResult:
     name: str
     status: ToolStatus
-    grade_hint: FinalGrade | None = None  # Kind of a confidence level
     data: dict[str, Any] = field(default_factory=dict)
     comment: str = ""
     skipped_reason: str | None = (
@@ -99,8 +98,6 @@ class ReactionGrade:
         lines.append("tool_results:")
         for result in self.results:
             tool_line = f"  - {result.name}: {result.status.value}"
-            if result.grade_hint is not None:
-                tool_line += f" ({result.grade_hint.value})"
             if result.comment:
                 tool_line += f" - {result.comment}"
             if result.skipped_reason:
