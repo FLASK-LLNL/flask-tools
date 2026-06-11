@@ -8,6 +8,7 @@ import pytest
 from flask_tools.pipette.config import PipetteConfig
 from flask_tools.pipette.constants import FinalGrade, ReactionGrade, ToolResult
 from flask_tools.pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.verifiers import ReactionChecker
 
 
 @pytest.fixture
@@ -69,6 +70,20 @@ class RecordingJudge:
             results=captured_results,
             comment=self.comment,
         )
+
+
+class SpyChecker(ReactionChecker):
+    """A reaction checker that returns result of handler function and records how many times it's called"""
+
+    def __init__(self, name: str, handler, *, stops_on_fail: bool = False) -> None:
+        self.name = name
+        self._handler = handler
+        self.stops_on_fail = stops_on_fail
+        self.calls: list[str] = []
+
+    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+        self.calls.append(rxn_smiles)
+        return self._handler(rxn_smiles, context)
 
 
 @pytest.fixture

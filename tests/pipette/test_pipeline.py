@@ -1,18 +1,11 @@
 from __future__ import annotations
 
-import json
-from copy import copy
-from dataclasses import asdict
-
 import pytest
-import pandas as pd
 
-import flask_tools.pipette.verifiers.reaction_energy
 from flask_tools.pipette.verifiers import ReactionEnergyChecker
 from flask_tools.pipette.verifiers.base import ReactionChecker, CacheableReactionChecker
-from flask_tools.pipette.config import LLMJudgeConfig, PipetteConfig, TopLevelConfig
-from flask_tools.pipette.constants import FinalGrade, ToolResult, ToolStatus
-from flask_tools.pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.config import PipetteConfig, TopLevelConfig
+from flask_tools.pipette.constants import ToolResult, ToolStatus
 from flask_tools.pipette.pipeline import (
     GradingPipeline,
     build_default_pipeline,
@@ -20,9 +13,6 @@ from flask_tools.pipette.pipeline import (
 )
 from conftest import RecordingJudge
 import helpers
-
-
-# todo check this file
 
 
 class StubChecker(ReactionChecker):
@@ -43,26 +33,6 @@ class StubChecker(ReactionChecker):
         if isinstance(self._result, Exception):
             raise self._result
         return self._result
-
-
-class RoutingChecker(ReactionChecker):
-    """A reaction checker that returns result of handler function it was initialized with."""
-
-    def __init__(self, name: str, handler, *, stops_on_fail: bool = False) -> None:
-        self.name = name
-        self._handler = handler
-        self.stops_on_fail = stops_on_fail
-        self.calls: list[str] = []
-
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
-        self.calls.append(rxn_smiles)
-        return self._handler(rxn_smiles, context)
-
-
-class CacheableRoutingChecker(RoutingChecker, CacheableReactionChecker):
-    def check_cache(self, rxn_smiles: str) -> None | ToolResult:
-        self.calls.append(rxn_smiles)
-        return self._handler(rxn_smiles, {})
 
 
 class DFTMockedReactionEnergyChecker(ReactionEnergyChecker):
@@ -129,139 +99,3 @@ def test_ai_mode_stops_after_unallowed_tool_error() -> None:
     assert (
         result.results[1].skipped_reason == "Skipped after hard failure in exact_match."
     )
-
-
-@pytest.mark.llm_query
-def test_pipeline_fixed_reaction(
-    tests_relative_path,
-) -> None:
-    # peggy: this could go into the e2e tests... what to name the e2e? pipeline? rxn?
-    original = "CCO>>C=C"
-    fixed = "CCO>>C=C.O"
-
-    smiles_validation = RoutingChecker(
-        "basic_smiles_validation",
-        lambda rxn_smiles, _: ToolResult(
-            name="basic_smiles_validation",
-            status=ToolStatus.PASS,
-            comment=f"parsed {rxn_smiles}",
-        ),
-    )
-    exact = RoutingChecker(
-        "exact_match",
-        lambda rxn_smiles, _: ToolResult(
-            name="exact_match",
-            status=ToolStatus.UNKNOWN,
-            data={"found": None},
-            comment="No exact match.",
-        ),
-    )
-    charge = RoutingChecker(
-        "charge_conservation",
-        lambda rxn_smiles, _: ToolResult(
-            name="charge_conservation",
-            status=ToolStatus.PASS,
-            data={"charge_difference": 0},
-            comment="Charge is conserved.",
-        ),
-        stops_on_fail=True,
-    )
-    mass = RoutingChecker(
-        "mass_conservation",
-        lambda rxn_smiles, _: ToolResult(
-            name="mass_conservation",
-            status=ToolStatus.FAIL if rxn_smiles == original else ToolStatus.PASS,
-            comment="Mass failed." if rxn_smiles == original else "Mass passed.",
-        ),
-    )
-
-    def make_re_res(_rxn_smiles, _):
-        res = ToolResult(
-            name="reaction_energy",
-            status=ToolStatus.PASS,
-            comment="Energy passed.",
-        )
-        return res
-
-    reaction_energy = RoutingChecker(
-        "reaction_energy",
-        # lambda rxn_smiles, _: ToolResult(
-        #     name="reaction_energy",
-        #     status=ToolStatus.PASS,
-        #     comment="Energy passed.",
-        # ),
-        make_re_res,
-    )
-
-    class StubReactionFixer:
-        def __init__(self) -> None:
-            self.calls: list[str] = []
-
-        def fix(self, rxn_smiles: str, results: list[ToolResult]) -> ReactionFix:
-            self.calls.append(rxn_smiles)
-            assert [result.name for result in results] == [
-                "basic_smiles_validation",
-                "exact_match",
-                "charge_conservation",
-                "mass_conservation",
-            ]
-            return ReactionFix(
-                fixed_reaction_smiles=fixed,
-                removed_agents=[],
-                added_reactants=[],
-                added_products=["O"],
-                reasoning_summary="Removed the agent and balanced both sides with water.",
-            )
-
-    fixer = StubReactionFixer()
-    pipeline = GradingPipeline(
-        checkers=[smiles_validation, exact, charge, mass, reaction_energy],
-        config=PipetteConfig(mode="exact"),
-        reaction_fixer=fixer,  # noqa
-    )
-
-    result = next(pipeline.grade([original]))
-
-    # debugging: i think two runs have all but the llm judge result be different... which sucks
-    dbg_file = tests_relative_path / "tool_res.json"
-    result2 = copy(result)
-    result2.final_grade = None
-    result2.short_reason = None
-    result2.short_comment = None
-    result2.comment = None
-    res_dict = asdict(result2)
-    # Remove the llm judge answer
-    if not dbg_file.exists():
-        prev_res_dict = None
-        with open(dbg_file, "w") as f:
-            json.dump(res_dict, f, indent=2)
-    else:
-        with open(dbg_file, "r") as f:
-            prev_res_dict = json.load(f)
-
-    if prev_res_dict is not None:
-        assert res_dict == prev_res_dict
-
-    assert fixer.calls == [original]
-    assert smiles_validation.calls == [original, fixed]
-    assert exact.calls == [original, fixed]
-    assert charge.calls == [original, fixed]
-    assert mass.calls == [original, fixed]
-    assert reaction_energy.calls == [fixed]
-    assert result.short_reason.startswith("ai.")
-    assert [tool.name for tool in result.results] == [
-        "basic_smiles_validation",
-        "exact_match",
-        "charge_conservation",
-        "mass_conservation",
-        "llm_reaction_fix",
-        "basic_smiles_validation",
-        "exact_match",
-        "charge_conservation",
-        "mass_conservation",
-        "reaction_energy",
-    ]
-    llm_fix_i = 4
-    assert result.results[llm_fix_i].data["original_reaction_smiles"] == original
-    assert result.results[llm_fix_i].data["fixed_reaction_smiles"] == fixed
-    assert result.final_grade == FinalGrade.LIKELY, result
