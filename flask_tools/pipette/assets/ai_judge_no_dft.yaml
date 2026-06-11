@@ -1,5 +1,3 @@
-mode: ai
-
 llm_judge:
   allow_fail:
     - exact_match

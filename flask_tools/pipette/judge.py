@@ -47,7 +47,7 @@ class BaseLLMJudge:
         api_key = resolve_llm_api_key(config.llm_judge.api_key)
         if not api_key:
             raise ValueError(
-                "AI mode requires an API key via llm_judge.api_key, "
+                "LLM Judge requires an API key via llm_judge.api_key, "
                 + ", ".join(LLM_API_KEY_ENV_VARS)
                 + "."
             )

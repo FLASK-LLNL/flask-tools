@@ -272,16 +272,8 @@ class PipetteConfig:
         return cls.from_mapping(data, base_dir=config_path.parent)
 
     @classmethod
-    def exact_default_path(cls) -> Path:
-        return package_config_path("exact_no_dft.yaml")
-
-    @classmethod
     def ai_default_path(cls) -> Path:
         return package_config_path("ai_judge_with_dft.yaml")
-
-    @classmethod
-    def from_default_exact_yaml(cls) -> PipetteConfig:
-        return cls.from_yaml(cls.exact_default_path())
 
     @classmethod
     def from_default_ai_yaml(cls) -> PipetteConfig:
@@ -293,12 +285,9 @@ def load_config(config_arg: str) -> PipetteConfig:
         return PipetteConfig.from_default_ai_yaml()
     elif config_arg == ConfigType.LLM_JUDGE_NO_DFT:
         return PipetteConfig.from_yaml(package_config_path("ai_judge_no_dft.yaml"))
-    elif config_arg == ConfigType.RULES_NO_DFT:
-        return PipetteConfig.from_default_exact_yaml()
     return PipetteConfig.from_yaml(config_arg)
 
 
 class ConfigType(StrEnum):
-    RULES_NO_DFT = "rules"
     LLM_JUDGE_WITH_DFT = "llm-judge-with-dft"
     LLM_JUDGE_NO_DFT = "llm-judge"

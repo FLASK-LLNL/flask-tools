@@ -36,13 +36,9 @@ pip install -e .[dev]
 ```
 
 ## Quick start
-There are two modes, "exact" which is deterministic but could fail on edge cases and "ai" where we ask an LLM for a
-final decision.
-
-### AI-Judge Mode
 
 ```shell
-python -m flask_tools.pipette.grade_rxn --rxn-smi '[HH].FF>>F.F' --config llm-judge
+python -m flask_tools.pipette.grade_rxn --rxn-smi 'Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C' --config llm-judge
 ```
  Note, DFT is not implemented so you muse use llm-judge or rules
 
@@ -50,52 +46,59 @@ python -m flask_tools.pipette.grade_rxn --rxn-smi '[HH].FF>>F.F' --config llm-ju
 from flask_tools.pipette.grade_rxn import grade_reaction
 from flask_tools.pipette.config import load_config
 
-result = grade_reaction(["[HH].FF>>F.F"], config='llm-judge')  # or config=file.yaml
+result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"], config='llm-judge')  # or config=file.yaml
 
 # Or
 config = load_config('llm-judge')
-result = grade_reaction(["[HH].FF>>F.F"], config=config)
+result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"], config=config)
 ```
 This loads the config from `pipette/assets/llm-judge.yaml`.
 
 Configs can also be a custom yaml file.
 
-### Exact Rule-based Grader
-Rule based. For example, if Mass Conservation says that imbalance is caused by a common or uncommon solvent,
-and reaction energies check out afterward, then it'll pass if the solvent was common, and fail otherwise.
 
-The "ai" mode will send to an LLM similar tool results to what the exact mode would have used to make a decision.
-
-#### Without DFT Reaction Energy Set up
-
-```shell
-python -m flask_tools.pipette.grade_rxn --rxn-smi 'CCO>>CC=O' --config rules # Also no DFT with this config
-```
-Or
-
-```python
-from flask_tools.pipette.grade_rxn import grade_reaction
-from flask_tools.pipette.config import load_config
-
-config = load_config('rules')  # Rule-based decision
-config.rules.use_dft = True  # Reaction energy will always return a passing value
-results = grade_reaction(["[HH].FF>>F.F"], config=config)
-for result in results:
-  print(result.final_grade.value)
-  for tool_result in result.results:
-    print(tool_result.name, tool_result.status.value, tool_result.comment)
-```
-
-Example output
+Example human-readable output
 ```aiignore
-[HH].FF>>F.F:
-ReactionGrade(final_grade=likely, short_reason=exact.mass_and_energy_pass)
-comment: Mass conservation and reaction energy both passed.
+Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C:
+ReactionGrade(final_grade=likely, short_reason=ai.plausible_n_methylation_balanced)
+comment: This is a chemically plausible N-methylation of a xanthine NH by methyl iodide to give the trimethylated product, with HI represented as [H+].[I-]. The parsed reaction is valid, charge is conserved, and the corrected/product-balanced form is mass conserved.
 tool_results:
   - basic_smiles_validation: pass (possible) - Reaction SMILES parsed successfully.
     {
       "reactant_count": 2,
-      "product_count": 2
+      "product_count": 1
+    }
+  - exact_match: unknown - No reaction database backend is configured.
+  - charge_conservation: pass (likely) - Charge is conserved.
+    {
+      "charge_difference": 0
+    }
+  - mass_conservation: fail (impossible) - Element counts are not conserved and do not match a configured common omission.
+    {
+      "mass_difference_amu": 127.912,
+      "element_difference": {
+        "H": -1,
+        "I": -1
+      },
+      "possible_missing_products": [],
+      "missing_product_confidence": null,
+      "closest_stoich": null
+    }
+  - llm_reaction_fix: pass - N-methylation of the xanthine NH with methyl iodide forms the trimethylated product and requires HI as byproduct; represented as [H+].[I-] to balance H and I.
+    {
+      "original_reaction_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+      "fixed_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
+      "removed_agents": [],
+      "added_reactants": [],
+      "added_products": [
+        "[H+]",
+        "[I-]"
+      ]
+    }
+  - basic_smiles_validation: pass (possible) - Reaction SMILES parsed successfully.
+    {
+      "reactant_count": 2,
+      "product_count": 3
     }
   - exact_match: unknown - No reaction database backend is configured.
   - charge_conservation: pass (likely) - Charge is conserved.
@@ -109,24 +112,6 @@ tool_results:
       "possible_missing_products": [],
       "missing_product_confidence": null,
       "closest_stoich": null
-    }
-  - reaction_energy: pass (likely) - Reaction energy is within the allowed threshold.
-    {
-      "energy_difference_ev_mol": -542.0,
-      "source": {
-        "[HH]": "cache",
-        "FF": "cache",
-        "F": "cache"
-      },
-      "metadata": {
-        "reactants": {
-          "[HH]": 0.0,
-          "FF": 0.0
-        },
-        "products": {
-          "F": -271.0
-        }
-      }
     }
 
 ```
@@ -148,66 +133,133 @@ Balanced
 Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
 ```
 
-## Output Format
-### Exact Rule-based Grader Results
-`results` is a list of `ReactionGrade` objects, which is a series of `ToolResults` and a final grade:
+## Full JSON Output
+`results` from `grade_reactions()` is a list of `ReactionGrade` objects, which is a series of `ToolResults` and a final grade:
 ```
-[ReactionGrade(final_grade=<FinalGrade.POSSIBLE: 'possible'>,
-               short_reason='exact.mass_potential-high.energy_pass',
-               results=[ToolResult(name='basic_smiles_validation',
-                                   status=<ToolStatus.PASS: 'pass'>,
-                                   grade_hint=<FinalGrade.POSSIBLE: 'possible'>,
-                                   data={'product_count': 1,
-                                         'reactant_count': 1},
-                                   comment='Reaction SMILES parsed '
-                                           'successfully.',
-                                   skipped_reason=None),
-                        ToolResult(name='exact_match',
-                                   status=<ToolStatus.UNKNOWN: 'unknown'>,
-                                   grade_hint=None,
-                                   data={},
-                                   comment='No reaction database backend is '
-                                           'configured.',
-                                   skipped_reason=None),
-                        ToolResult(name='charge_conservation',
-                                   status=<ToolStatus.PASS: 'pass'>,
-                                   grade_hint=<FinalGrade.LIKELY: 'likely'>,
-                                   data={'charge_difference': 0},
-                                   comment='Charge is conserved.',
-                                   skipped_reason=None),
-                        ToolResult(name='mass_conservation',
-                                   status=<ToolStatus.POTENTIAL: 'potential'>,
-                                   grade_hint=<FinalGrade.POSSIBLE: 'possible'>,
-                                   data={'closest_stoich': None,
-                                         'element_difference': {'H': -2},
-                                         'mass_difference_amu': 2.0159,
-                                         'missing_product_confidence': 'high',
-                                         'possible_missing_products': [{'confidence': 'high',
-                                                                        'mass_amu': 2.0159,
-                                                                        'missing_side': 'reactants',
-                                                                        'name': 'hydrogen'}]},
-                                   comment='Element counts are not conserved, '
-                                           'but the difference matches a '
-                                           'common omitted species or solvent: '
-                                           'hydrogen.',
-                                   skipped_reason=None),
-                        ToolResult(name='reaction_energy',
-                                   status=<ToolStatus.PASS: 'pass'>,
-                                   grade_hint=<FinalGrade.LIKELY: 'likely'>,
-                                   data={'energy_difference_ev_mol': 0,
-                                         'metadata': {'products': {'CC=O': -50.2},
-                                                      'reactants': {'CCO': -56.4}},
-                                         'source': 'dft'},
-                                   comment='Reaction energy is within the '
-                                           'allowed threshold.',
-                                   skipped_reason=None)],
-               comment='Reaction depends on a possible omitted species to '
-                       'satisfy mass balance, reaction energy passed.')]
+[
+  {
+    "rxn_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+    "cleaned_rxn_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
+    "grade": {
+      "final_grade": "likely",
+      "short_reason": "ai.plausible_n_methylation_balanced",
+      "results": [
+        {
+          "name": "basic_smiles_validation",
+          "status": "pass",
+          "grade_hint": "possible",
+          "data": {
+            "reactant_count": 2,
+            "product_count": 1
+          },
+          "comment": "Reaction SMILES parsed successfully.",
+          "skipped_reason": null
+        },
+        {
+          "name": "exact_match",
+          "status": "unknown",
+          "grade_hint": null,
+          "data": {},
+          "comment": "No reaction database backend is configured.",
+          "skipped_reason": null
+        },
+        {
+          "name": "charge_conservation",
+          "status": "pass",
+          "grade_hint": "likely",
+          "data": {
+            "charge_difference": 0
+          },
+          "comment": "Charge is conserved.",
+          "skipped_reason": null
+        },
+        {
+          "name": "mass_conservation",
+          "status": "fail",
+          "grade_hint": "impossible",
+          "data": {
+            "mass_difference_amu": 127.912,
+            "element_difference": {
+              "H": -1,
+              "I": -1
+            },
+            "possible_missing_products": [],
+            "missing_product_confidence": null,
+            "closest_stoich": null
+          },
+          "comment": "Element counts are not conserved and do not match a configured common omission.",
+          "skipped_reason": null
+        },
+        {
+          "name": "llm_reaction_fix",
+          "status": "pass",
+          "grade_hint": null,
+          "data": {
+            "original_reaction_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
+            "fixed_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
+            "removed_agents": [],
+            "added_reactants": [],
+            "added_products": [
+              "[H+]",
+              "[I-]"
+            ]
+          },
+          "comment": "N-methylation of the xanthine NH with methyl iodide forms the trimethylated product and requires HI as byproduct; represented as [H+].[I-] to balance H and I.",
+          "skipped_reason": null
+        },
+        {
+          "name": "basic_smiles_validation",
+          "status": "pass",
+          "grade_hint": "possible",
+          "data": {
+            "reactant_count": 2,
+            "product_count": 3
+          },
+          "comment": "Reaction SMILES parsed successfully.",
+          "skipped_reason": null
+        },
+        {
+          "name": "exact_match",
+          "status": "unknown",
+          "grade_hint": null,
+          "data": {},
+          "comment": "No reaction database backend is configured.",
+          "skipped_reason": null
+        },
+        {
+          "name": "charge_conservation",
+          "status": "pass",
+          "grade_hint": "likely",
+          "data": {
+            "charge_difference": 0
+          },
+          "comment": "Charge is conserved.",
+          "skipped_reason": null
+        },
+        {
+          "name": "mass_conservation",
+          "status": "pass",
+          "grade_hint": "likely",
+          "data": {
+            "mass_difference_amu": 0.0,
+            "element_difference": {},
+            "possible_missing_products": [],
+            "missing_product_confidence": null,
+            "closest_stoich": null
+          },
+          "comment": "Element counts are conserved.",
+          "skipped_reason": null
+        }
+      ],
+      "comment": "This is a chemically plausible N-methylation of a xanthine NH by methyl iodide to give the trimethylated product, with HI represented as [H+].[I-]. The parsed reaction is valid, charge is conserved, and the corrected/product-balanced form is mass conserved."
+    }
+  }
+]
 
 ```
 
-By default, `grade_reaction(...)` loads the packaged "exact" rule based config YAML by from
-`pipette/assets/exact.yaml`.
+By default, `grade_reaction(...)` loads the packaged "llm-config-no-llm" rule based config YAML by from
+`pipette/assets/ai_judge_no_dft.yaml`.
 
 To restrict the pipeline to specific tools, set `PipetteConfig.tool_list` to
 either `"all"` or an explicit list of tool names such as

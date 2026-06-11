@@ -17,7 +17,6 @@ from .verifiers.base import CacheableReactionChecker
 from .judge import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus
 from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
-from .exact_grading import apply_exact_rules
 from .smiles import canonicalize_reaction_smiles
 from .llm_query import _run_coroutine_sync
 
@@ -78,7 +77,7 @@ class GradingPipeline:
         self.judge = judge
         self.reaction_fixer = reaction_fixer
         self._validate_configuration()
-        if self.config.mode == "ai" and self.judge is None:
+        if self.judge is None:
             self.judge = AsyncLLMJudge.from_config(self.config)
         if self.reaction_fixer is None:
             self.reaction_fixer = AsyncLLMReactionFixer.from_config(self.config)
@@ -88,16 +87,12 @@ class GradingPipeline:
         if len(set(checker_names)) != len(checker_names):
             raise ValueError("Checker names must be unique within a grading pipeline.")
 
-        if self.config.mode not in {"exact", "ai"}:
-            raise ValueError(f"Unsupported pipeline mode: {self.config.mode!r}")
-
-        if self.config.mode == "ai":
-            unknown = sorted(set(self.config.llm_judge.allow_fail) - set(checker_names))
-            if unknown:
-                raise ValueError(
-                    "Unknown tool names in PipetteConfig.llm_judge.allow_fail: "
-                    + ", ".join(unknown)
-                )
+        unknown = sorted(set(self.config.llm_judge.allow_fail) - set(checker_names))
+        if unknown:
+            raise ValueError(
+                "Unknown tool names in PipetteConfig.llm_judge.allow_fail: "
+                + ", ".join(unknown)
+            )
 
     def _should_skip_remaining(
         self, checker: ReactionChecker, result: ToolResult
@@ -107,8 +102,7 @@ class GradingPipeline:
             or not checker.stops_on_fail
             or (result.status not in {ToolStatus.FAIL, ToolStatus.ERROR})
             or (
-                self.config.mode == "ai"
-                and self.config.llm_judge.allow_fail == "all"
+                self.config.llm_judge.allow_fail == "all"
                 or (checker.name in self.config.llm_judge.allow_fail)
             )
         ):
@@ -217,33 +211,19 @@ class GradingPipeline:
         """Exact grading happens without the prefix_results, namely the results before llm-fix of rxn balance.
         AI grading does use it, because it should be smart enough to deal with it.
         """
-        if self.config.mode == "exact":
-            res = apply_exact_rules(list(context.values()))
-            assert res is not None
-            res = self._with_prefix_results(res, prefix_results)
-            assert isinstance(res, ReactionGrade)
-            return res
+        if self.judge is None:
+            raise ValueError("AI mode requires an LLM judge implementation.")
 
-        if self.config.mode == "ai":
-            if self.judge is None:
-                raise ValueError("AI mode requires an LLM judge implementation.")
-
-            results = [pr[-1] for pr in prefix_results] + list(context.values())
-            judge_result = self.judge.judge(
-                rxn_smiles,
-                results,
-            )
-            res = (
-                await judge_result
-                if inspect.isawaitable(judge_result)
-                else judge_result
-            )
-            assert res is not None
-            res = self._with_prefix_results(res, prefix_results)
-            assert isinstance(res, ReactionGrade)
-            return res
-
-        raise ValueError(f"Unsupported pipeline mode: {self.config.mode!r}")
+        results = [pr[-1] for pr in prefix_results] + list(context.values())
+        judge_result = self.judge.judge(
+            rxn_smiles,
+            results,
+        )
+        res = await judge_result if inspect.isawaitable(judge_result) else judge_result
+        assert res is not None
+        res = self._with_prefix_results(res, prefix_results)
+        assert isinstance(res, ReactionGrade)
+        return res
 
     async def grade_one_async(
         self,

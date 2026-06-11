@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+from copy import copy
+from dataclasses import asdict
+
 import pytest
 import pandas as pd
 
@@ -224,19 +228,6 @@ def test_ai_mode_rejects_unknown_allow_fail_tool() -> None:
         )
 
 
-# peggy: move to integration tests/ test_reaction
-def test_exact_pipeline(monkeypatch, test_data_path) -> None:
-    """Test exact pipeline on the example reactions"""
-    df = pd.read_csv(test_data_path / "rxns.csv")  # noqa
-    df.set_index("id", inplace=True)
-    pipeline = build_default_pipeline(config=PipetteConfig(mode="exact"))
-    rxn_smi = df.loc["mapped"]["rxn_smiles"]
-    res = pipeline.grade_one(rxn_smi)
-
-    assert res.final_grade is FinalGrade.POSSIBLE, str(res)
-    assert res.short_reason == "exact.mass_potential-high"
-
-
 def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results() -> (
     None
 ):
@@ -280,10 +271,13 @@ def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results
     ]
 
 
-def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
+@pytest.mark.llm_query
+def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow(
+    tests_relative_path,
+) -> None:
     # peggy: this could go into the e2e tests... what to name the e2e? pipeline? rxn?
-    original = "CCO.O>>CC"
-    fixed = "CCO.O>>CC.O"
+    original = "CCO>>CC"
+    fixed = "CCO>>CC.O"
 
     smiles_validation = RoutingChecker(
         "basic_smiles_validation",
@@ -353,8 +347,8 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
             ]
             return ReactionFix(
                 fixed_reaction_smiles=fixed,
-                removed_agents=["O"],
-                added_reactants=["O"],
+                removed_agents=[],
+                added_reactants=[],
                 added_products=["O"],
                 reasoning_summary="Removed the agent and balanced both sides with water.",
             )
@@ -368,13 +362,33 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
 
     result = next(pipeline.grade([original], tiered_run=True))
 
+    # debugging: i think two runs have all but the llm judge result be different... which sucks
+    dbg_file = tests_relative_path / "tool_res.json"
+    result2 = copy(result)
+    result2.final_grade = None
+    result2.short_reason = None
+    result2.short_comment = None
+    result2.comment = None
+    res_dict = asdict(result2)
+    # Remove the llm judge answer
+    if not dbg_file.exists():
+        prev_res_dict = None
+        with open(dbg_file, "w") as f:
+            json.dump(res_dict, f, indent=2)
+    else:
+        with open(dbg_file, "r") as f:
+            prev_res_dict = json.load(f)
+
+    if prev_res_dict is not None:
+        assert res_dict == prev_res_dict
+
     assert fixer.calls == [original]
     assert smiles_validation.calls == [original, fixed]
     assert exact.calls == [original, fixed]
     assert charge.calls == [original, fixed]
     assert mass.calls == [original, fixed]
     assert reaction_energy.calls == [fixed]
-    assert result.short_reason == "exact.mass_and_energy_pass"
+    assert result.short_reason.startswith("ai.")
     assert [tool.name for tool in result.results] == [
         "basic_smiles_validation",
         "exact_match",
@@ -390,3 +404,4 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow() -> None:
     llm_fix_i = 4
     assert result.results[llm_fix_i].data["original_reaction_smiles"] == original
     assert result.results[llm_fix_i].data["fixed_reaction_smiles"] == fixed
+    assert result.final_grade == FinalGrade.POSSIBLE, result

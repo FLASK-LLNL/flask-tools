@@ -61,7 +61,6 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     assert config.solvent_catalog_path == (tmp_path / "solvents.csv").resolve()
 
     # Test other attrs are set correctly
-    assert config.mode == "ai"
     assert config.tool_list == ["basic_smiles_validation", "reaction_energy"]
     assert config.llm_judge.allow_fail == ["reaction_energy"]
     assert config.llm_judge.url == "https://example.test/v1/"

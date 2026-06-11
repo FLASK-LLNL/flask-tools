@@ -155,7 +155,7 @@ def main() -> list[dict]:
         "--config",
         default="rules",
         help=f"Path to a Pipette YAML config file, or the special values '{ConfigType.LLM_JUDGE_WITH_DFT}', "
-        f"'{ConfigType.LLM_JUDGE_NO_DFT}, or '{ConfigType.RULES_NO_DFT}'.",
+        f"or '{ConfigType.LLM_JUDGE_NO_DFT}.",
     )
     parser.add_argument(
         "--verbose",
