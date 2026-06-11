@@ -7,9 +7,9 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .config import PipetteConfig, load_config, ConfigType
-from .constants import ReactionGrade, ToolResult
-from .pipeline import build_default_pipeline
+from flask_tools.pipette.config import PipetteConfig, load_config, ConfigType
+from flask_tools.pipette.constants import ReactionGrade, ToolResult
+from flask_tools.pipette.pipeline import build_default_pipeline
 
 if TYPE_CHECKING:
     from .judge import AsyncLLMJudge

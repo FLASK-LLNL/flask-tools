@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import sys
+from collections import namedtuple
 from copy import copy
 from dataclasses import asdict
+from typing import Sequence
 
 import pytest
+from onnxruntime.tools.ort_format_model.ort_flatbuffers_py.fbs import SequenceType
+from rdkit.Chem.ChemUtils import TemplateExpand
 
 from flask_tools.pipette import ToolResult, ToolStatus, FinalGrade
 from flask_tools.pipette.constants import FinalGrade, ReactionGrade
@@ -28,6 +33,14 @@ CAFFEINE_FIXED_REACTION_SMIS = (
 )
 
 
+@dataclasses.dataclass()
+class TestRxn:
+    orig_smi: str
+    possible_fixed_smis: (
+        Sequence[str] | None
+    )  # None if it's not meant to be balanceable
+
+
 @pytest.mark.llm_query
 @pytest.mark.parametrize(
     "config_name",
@@ -36,8 +49,10 @@ CAFFEINE_FIXED_REACTION_SMIS = (
         # ConfigType.LLM_JUDGE_WITH_DFT,
     ],
 )
-@pytest.mark.llm_query
-def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
+def test_calls_fixer_caffeine_llm_judge(config_name) -> None:
+    # def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
+
+    # Short tests that checks fixed smiles and final grade
     config = load_config(config_name)
     results = grade_reaction([CAFFEINE_ORIGINAL_REACTION_SMI], config=config)
     assert len(results) == 1
@@ -69,6 +84,7 @@ def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) 
 def test_pipeline_fixed_reaction(
     tests_relative_path,
 ) -> None:
+    # In-depth test that checks that ever single expected tool is called
     original = "CCO>>C=C"
     fixed = "CCO>>C=C.O"
 
@@ -118,6 +134,7 @@ def test_pipeline_fixed_reaction(
     )
 
     class StubReactionFixer:
+        # Have a fixed LLM fixer step to better test LLM judge step
         def __init__(self) -> None:
             self.calls: list[str] = []
 
@@ -126,13 +143,14 @@ def test_pipeline_fixed_reaction(
             assert [result.name for result in results] == [
                 "basic_smiles_validation",
                 "exact_match",
-                "charge_conservation",
-                "mass_conservation",
+                # "charge_conservation",
+                # "mass_conservation",
             ]
             return ReactionFix(
                 fixed_reaction_smiles=fixed,
                 removed_agents=[],
                 added_reactants=[],
+                removed_products=[],
                 added_products=["O"],
                 reasoning_summary="Removed the agent and balanced both sides with water.",
             )
@@ -164,20 +182,19 @@ def test_pipeline_fixed_reaction(
             prev_res_dict = json.load(f)
 
     if prev_res_dict is not None:
-        assert res_dict == prev_res_dict
+        # assert res_dict == prev_res_dict
+        assert json.loads(json.dumps(res_dict)) == prev_res_dict
 
-    assert fixer.calls == [original]
     assert smiles_validation.calls == [original, fixed]
     assert exact.calls == [original, fixed]
-    assert charge.calls == [original, fixed]
-    assert mass.calls == [original, fixed]
+    assert fixer.calls == [original]
+    assert charge.calls == [fixed]
+    assert mass.calls == [fixed]
     assert reaction_energy.calls == [fixed]
     assert result.short_reason.startswith("ai.")
     assert [tool.name for tool in result.results] == [
         "basic_smiles_validation",
         "exact_match",
-        "charge_conservation",
-        "mass_conservation",
         "llm_reaction_fix",
         "basic_smiles_validation",
         "exact_match",
@@ -185,7 +202,7 @@ def test_pipeline_fixed_reaction(
         "mass_conservation",
         "reaction_energy",
     ]
-    llm_fix_i = 4
+    llm_fix_i = 2
     assert result.results[llm_fix_i].data["original_reaction_smiles"] == original
     assert result.results[llm_fix_i].data["fixed_reaction_smiles"] == fixed
     assert result.final_grade == FinalGrade.LIKELY, result

@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from flask_tools.pipette.config import PipetteConfig
-from flask_tools.pipette.constants import FinalGrade, ReactionGrade, ToolResult
+from flask_tools.pipette.constants import (
+    FinalGrade,
+    ReactionGrade,
+    ToolResult,
+    ToolResultsDict,
+)
 from flask_tools.pipette.reaction_fixer import ReactionFix
 from flask_tools.pipette.verifiers import ReactionChecker
 
@@ -81,7 +86,7 @@ class SpyChecker(ReactionChecker):
         self.stops_on_fail = stops_on_fail
         self.calls: list[str] = []
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         self.calls.append(rxn_smiles)
         return self._handler(rxn_smiles, context)
 

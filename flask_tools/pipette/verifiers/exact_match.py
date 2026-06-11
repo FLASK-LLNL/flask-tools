@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 from ..smiles import canonicalize_reaction_smiles
 
 
@@ -28,7 +28,7 @@ class ExactMatchChecker(ReactionChecker):
     def __init__(self, database: ReactionDatabase | None = None) -> None:
         self.database = database
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         if self.database is None:
             return ToolResult(
                 name=self.name,

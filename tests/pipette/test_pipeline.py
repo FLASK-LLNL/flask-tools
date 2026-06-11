@@ -5,7 +5,7 @@ import pytest
 from flask_tools.pipette.verifiers import ReactionEnergyChecker
 from flask_tools.pipette.verifiers.base import ReactionChecker, CacheableReactionChecker
 from flask_tools.pipette.config import PipetteConfig, TopLevelConfig
-from flask_tools.pipette.constants import ToolResult, ToolStatus
+from flask_tools.pipette.constants import ToolResult, ToolStatus, ToolResultsDict
 from flask_tools.pipette.pipeline import (
     GradingPipeline,
     build_default_pipeline,
@@ -29,7 +29,7 @@ class StubChecker(ReactionChecker):
         self._result = result
         self.stops_on_fail = stops_on_fail
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         if isinstance(self._result, Exception):
             raise self._result
         return self._result

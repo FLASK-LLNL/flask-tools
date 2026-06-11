@@ -124,3 +124,8 @@ class MissingProductRule:
     smiles: str
     formula: dict[str, int]
     confidence: str
+
+
+Smi = str
+CheckerName = str
+ToolResultsDict = dict[tuple[Smi, CheckerName], ToolResult]

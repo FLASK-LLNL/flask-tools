@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from enum import StrEnum
 
-from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 
 
 class ReactionChecker(ABC):
@@ -11,7 +11,7 @@ class ReactionChecker(ABC):
     stops_on_fail: bool = False
 
     @abstractmethod
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         raise NotImplementedError
 
     def skipped(self, reason: str) -> ToolResult:

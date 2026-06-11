@@ -8,7 +8,7 @@ from typing import Protocol, Iterable
 
 from .base import CacheableReactionChecker
 from ..config import PipetteConfig
-from ..constants import FinalGrade, ToolResult, ToolStatus
+from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 from ..smiles import (
     split_reaction_smiles,
     smiles_to_inchi_key,
@@ -209,7 +209,7 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         )
         return self.result_from_energies(record)
 
-    def run(self, rxn_smiles: str, context: dict[str, ToolResult]) -> ToolResult:
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
         """If using fake dft, return a fake passing result"""
         reactants, _, products = parse_reaction_smi(
             rxn_smiles, ret_mol=False
