@@ -34,27 +34,47 @@ CAFFEINE_FIXED_REACTION_SMIS = (
 
 
 @dataclasses.dataclass()
-class TestRxn:
+class RxnToTest:
+    should_pass: bool
     orig_smi: str
     possible_fixed_smis: (
         Sequence[str] | None
     )  # None if it's not meant to be balanceable
+    accepted_grades: Sequence[FinalGrade]
+
+
+rxns_to_test = {
+    (CAFFEINE := "caffeine"): RxnToTest(
+        True,
+        orig_smi=CAFFEINE_ORIGINAL_REACTION_SMI,
+        possible_fixed_smis=CAFFEINE_FIXED_REACTION_SMIS,
+        accepted_grades=[FinalGrade.LIKELY],
+    ),
+    # mislabeled rxn: common solvent as product pulled from flask-copilot retrosynthesis
+    (TOLUENE := "toluene"): RxnToTest(
+        False,
+        orig_smi="Cl[SiH](C)C.BrCCCCCCO[SiH](C)C>>Cc1ccccc1",
+        possible_fixed_smis=None,
+        accepted_grades=[FinalGrade.IMPOSSIBLE],
+    ),
+}
 
 
 @pytest.mark.llm_query
 @pytest.mark.parametrize(
-    "config_name",
+    "rxn_name",
     [
-        ConfigType.LLM_JUDGE_NO_DFT,
-        # ConfigType.LLM_JUDGE_WITH_DFT,
+        CAFFEINE,
+        TOLUENE,
     ],
 )
-def test_calls_fixer_caffeine_llm_judge(config_name) -> None:
+def test_calls_fixer_caffeine_llm_judge(rxn_name: str) -> None:
     # def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
+    rxn_to_test = rxns_to_test[rxn_name]
 
     # Short tests that checks fixed smiles and final grade
-    config = load_config(config_name)
-    results = grade_reaction([CAFFEINE_ORIGINAL_REACTION_SMI], config=config)
+    config = load_config(ConfigType.LLM_JUDGE_NO_DFT)
+    results = grade_reaction([rxn_to_test.orig_smi], config=config)
     assert len(results) == 1
     result: ReactionGrade = results[0]
     tool_results: list[ToolResult] = result.results
@@ -62,22 +82,23 @@ def test_calls_fixer_caffeine_llm_judge(config_name) -> None:
     assert "llm_reaction_fix" in tool_names
 
     fix_result = next(tr for tr in tool_results if tr.name == "llm_reaction_fix")
-    assert fix_result.data["original_reaction_smiles"] == CAFFEINE_ORIGINAL_REACTION_SMI
-    assert (
-        fix_result.data["fixed_reaction_smiles"] in CAFFEINE_FIXED_REACTION_SMIS
-    ), fix_result
-    assert fix_result.data["added_products"] in (["I"], ["[H+]", "[I-]"]), fix_result
+    assert fix_result.data["original_reaction_smiles"] == rxn_to_test.orig_smi
+    if rxn_to_test.possible_fixed_smis:
+        assert (
+            fix_result.data["fixed_reaction_smiles"] in rxn_to_test.possible_fixed_smis
+        ), fix_result
+        if rxn_name == CAFFEINE:
+            assert fix_result.data["added_products"] in (
+                ["I"],
+                ["[H+]", "[I-]"],
+            ), fix_result
 
-    if config_name == ConfigType.LLM_JUDGE_NO_DFT:
-        assert result.final_grade in (
-            FinalGrade.LIKELY,
-            # FinalGrade.POSSIBLE,
-        ), f"{(result.final_grade, fix_result)}"
-        assert result.short_reason.startswith(
-            "ai."
-        )  # Prompt requests this format for the short reason
-    else:
-        raise ValueError(f"Unknown config_name: {config_name}")
+    assert (
+        result.final_grade in rxn_to_test.accepted_grades
+    ), f"{(result.final_grade, fix_result)}"
+    assert result.short_reason.startswith(
+        "ai."
+    )  # Prompt requests this format for the short reason
 
 
 @pytest.mark.llm_query

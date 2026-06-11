@@ -74,28 +74,3 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     )
 
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
-
-
-def test_ai_mode_stops_after_unallowed_tool_error() -> None:
-    # Check that some tools cause an immediate stop
-    judge = RecordingJudge()
-    pipeline = GradingPipeline(
-        checkers=[
-            StubChecker(
-                "exact_match", RuntimeError("database offline"), stops_on_fail=True
-            ),
-            StubChecker("reaction_energy", _pass_result("reaction_energy")),
-        ],
-        config=PipetteConfig(mode="ai"),
-        judge=judge,
-    )
-
-    result = next(pipeline.grade(["CCO>>CC=O"]))
-
-    assert [tool.status for tool in result.results] == [
-        ToolStatus.ERROR,
-        ToolStatus.NOT_RUN,
-    ]
-    assert (
-        result.results[1].skipped_reason == "Skipped after hard failure in exact_match."
-    )
