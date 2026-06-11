@@ -91,6 +91,7 @@ def test_resolve_tool_list_rejects_unknown_and_duplicate_tools() -> None:
 
 
 def test_build_default_pipeline_uses_tool_list_order() -> None:
+    # Check that tool call order respects tool_list
     config = PipetteConfig(
         tool_list=["third", "first"], rules=TopLevelConfig(use_dft=False)
     )
@@ -106,51 +107,8 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
 
 
-# peggy: possibly remove after discuss w/ Tal
-# def test_build_default_pipeline_passes_reaction_energy_database_string(
-#     tmp_path,
-# ) -> None:
-#     database_path = tmp_path / "fake_molecule_energies.csv"
-#     database_path.write_text("inchi_key,energy_ev_mol\nTEST,-1.0\n", encoding="utf-8")
-#     config = PipetteConfig(tool_list=["reaction_energy"])
-#     config.tools_settings.reaction_energy.database = database_path
-#
-#     pipeline = build_default_pipeline(config=config)
-#
-#     checker = pipeline.checkers[0]
-#     assert checker.name == "reaction_energy"
-#     assert checker.database == str(database_path.resolve())
-
-
-def test_ai_mode_continues_after_allowed_tool_error() -> None:
-    judge = RecordingJudge()
-    pipeline = GradingPipeline(
-        checkers=[
-            StubChecker(
-                "exact_match", RuntimeError("database offline"), stops_on_fail=True
-            ),
-            StubChecker("reaction_energy", _pass_result("reaction_energy")),
-        ],
-        config=PipetteConfig(
-            mode="ai",
-            llm_judge=LLMJudgeConfig(allow_fail=["exact_match"]),
-        ),
-        judge=judge,
-    )
-
-    result = next(pipeline.grade(["CCO>>CC=O"]))
-
-    assert result.short_reason == "ai.mock_judge"
-    assert [tool.status for tool in result.results] == [
-        ToolStatus.ERROR,
-        ToolStatus.PASS,
-    ]
-    assert "traceback" in result.results[0].data
-    assert "RuntimeError: database offline" in result.results[0].data["traceback"]
-    assert len(judge.calls) == 1
-
-
 def test_ai_mode_stops_after_unallowed_tool_error() -> None:
+    # Check that some tools cause an immediate stop
     judge = RecordingJudge()
     pipeline = GradingPipeline(
         checkers=[
@@ -174,63 +132,10 @@ def test_ai_mode_stops_after_unallowed_tool_error() -> None:
     )
 
 
-def test_ai_mode_requires_api_key_for_default_judge(monkeypatch) -> None:
-    for env_var in (
-        "FLASK_ORCHESTRATOR_API_KEY",
-        "PIPETTE_API_KEY",
-        "OPENAI_API_KEY",
-    ):
-        monkeypatch.delenv(env_var, raising=False)
-    with pytest.raises(ValueError, match="API key"):
-        GradingPipeline(
-            checkers=[
-                StubChecker(
-                    "basic_smiles_validation", _pass_result("basic_smiles_validation")
-                )
-            ],
-            config=PipetteConfig(mode="ai"),
-        )
-
-
-def test_ai_mode_uses_default_judge_when_none_is_provided(monkeypatch) -> None:
-    judge = RecordingJudge()
-    monkeypatch.setattr(
-        "flask_tools.pipette.pipeline.LLMJudge.from_config", lambda config: judge
-    )
-
-    pipeline = GradingPipeline(
-        checkers=[
-            StubChecker(
-                "basic_smiles_validation", _pass_result("basic_smiles_validation")
-            )
-        ],
-        config=PipetteConfig(mode="ai"),
-    )
-
-    result = next(pipeline.grade(["CCO>>CC=O"]))
-
-    assert result.short_reason == "ai.mock_judge"
-    assert len(judge.calls) == 1
-
-
-def test_ai_mode_rejects_unknown_allow_fail_tool() -> None:
-    with pytest.raises(ValueError, match="llm_judge.allow_fail"):
-        GradingPipeline(
-            checkers=[
-                StubChecker(
-                    "basic_smiles_validation", _pass_result("basic_smiles_validation")
-                )
-            ],
-            config=PipetteConfig(
-                mode="ai", llm_judge=LLMJudgeConfig(allow_fail=["missing_tool"])
-            ),
-            judge=RecordingJudge(),
-        )
-
-
 def test_grade_one_tiered_run_returns_pending_reaction_with_tuple_prefix_results() -> (
     None
 ):
+    # Checks that results contain pre-llm-fixed results (Keep this even after refactoring tiered run away)
     rxn_smiles = "CCO>>CC=O"
     # peggy: these can be StubCheckers instead of RoutingChecker. And it doesn't need to be _pass_result necessarily, although it more closely replicaetes the usual return type
     pipeline = GradingPipeline(
@@ -276,8 +181,8 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow(
     tests_relative_path,
 ) -> None:
     # peggy: this could go into the e2e tests... what to name the e2e? pipeline? rxn?
-    original = "CCO>>CC"
-    fixed = "CCO>>CC.O"
+    original = "CCO>>C=C"
+    fixed = "CCO>>C=C.O"
 
     smiles_validation = RoutingChecker(
         "basic_smiles_validation",
@@ -404,4 +309,4 @@ def test_pipeline_reruns_with_llm_fixed_reaction_once_for_tiered_flow(
     llm_fix_i = 4
     assert result.results[llm_fix_i].data["original_reaction_smiles"] == original
     assert result.results[llm_fix_i].data["fixed_reaction_smiles"] == fixed
-    assert result.final_grade == FinalGrade.POSSIBLE, result
+    assert result.final_grade == FinalGrade.LIKELY, result

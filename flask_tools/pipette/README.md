@@ -258,7 +258,7 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
 
 ```
 
-By default, `grade_reaction(...)` loads the packaged "llm-config-no-llm" rule based config YAML by from
+By default, `grade_reaction(...)` loads the packaged "llm-config-no-dft" rule based config YAML by from
 `pipette/assets/ai_judge_no_dft.yaml`.
 
 To restrict the pipeline to specific tools, set `PipetteConfig.tool_list` to
@@ -276,3 +276,9 @@ from flask_tools.pipette.config import PipetteConfig
 
 config = PipetteConfig.from_yaml("my-config.yaml")
 ```
+
+# Tests
+
+`pytest`
+Or
+`pytest -m llm_query` to run the tests that use LLM

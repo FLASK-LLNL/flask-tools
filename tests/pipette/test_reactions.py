@@ -26,6 +26,7 @@ FIXED_REACTION_SMIS = (
         ConfigType.LLM_JUDGE_NO_DFT,
     ],
 )
+@pytest.mark.llm_query
 def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) -> None:
     # peggy: should end to end test have own test file?
 
@@ -40,7 +41,7 @@ def test_calls_fixer_caffeine_llm_judge(install_mock_llm_services, config_name) 
     fix_result = next(tr for tr in tool_results if tr.name == "llm_reaction_fix")
     assert fix_result.data["original_reaction_smiles"] == ORIGINAL_REACTION_SMI
     assert fix_result.data["fixed_reaction_smiles"] in FIXED_REACTION_SMIS, fix_result
-    assert fix_result.data["added_products"] in (["I"], ["H+", "I-"]), fix_result
+    assert fix_result.data["added_products"] in (["I"], ["[H+]", "[I-]"]), fix_result
 
     if config_name == ConfigType.LLM_JUDGE_NO_DFT:
         assert result.final_grade is FinalGrade.LIKELY, (result.final_grade, fix_result)
