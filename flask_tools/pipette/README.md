@@ -8,12 +8,12 @@ The current pipeline includes:
 - reaction SMILES parsing
 - basic SMILES validation
 - exact-match checker interfaces for reaction databases
+- reaction fixing LLM call
+  - Run if no exact match is found
+  - If new reaction is returned, goes back to start. Only allowed to run once in a pipeline
 - charge conservation
 - mass conservation with simple missing-product heuristics and solvent catalogs
-- reaction fixing LLM call
-  - Run if mass conservation fails
-  - If new reaction is returned, goes back to start. Only allowed to run once in a pipeline
-- reaction-energy checker interfaces for cached DFT results or external runs
+- (Planned) reaction-energy checker interfaces for cached DFT results or external runs
 - Grading:
   - an exact rule-based grader
   - an AI-judge pipeline interface that can run selected tools and hand the results
@@ -38,15 +38,15 @@ pip install -e .[dev]
 ## Quick start
 
 ```shell
-python -m flask_tools.pipette.grade_rxn --rxn-smi 'Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C' --config llm-judge
+python -m flask_tools.pipette.grade_rxn --rxn-smi 'Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C'
 ```
- Note, DFT is not implemented so you muse use llm-judge or rules
+Note, the default config is `llm-judge` (no DFT) and may be left out in the CLI and in the python code.
 
 ```python
 from flask_tools.pipette.grade_rxn import grade_reaction
 from flask_tools.pipette.config import load_config
 
-result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"], config='llm-judge')  # or config=file.yaml
+result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"]) # Optionally, config='llm-judge' or "file.yaml"
 
 # Or
 config = load_config('llm-judge')
@@ -60,31 +60,16 @@ Configs can also be a custom yaml file.
 Example human-readable output
 ```aiignore
 Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C:
-ReactionGrade(final_grade=likely, short_reason=ai.plausible_n_methylation_balanced)
-comment: This is a chemically plausible N-methylation of a xanthine NH by methyl iodide to give the trimethylated product, with HI represented as [H+].[I-]. The parsed reaction is valid, charge is conserved, and the corrected/product-balanced form is mass conserved.
+ReactionGrade(final_grade=likely, short_reason=ai.plausible_n_methylation)
+comment: The reaction is chemically plausible: methyl iodide can N-methylate the xanthine NH to give the trimethylated product, with HI represented as [H+] and [I-]. The SMILES parses correctly, and both charge and mass are conserved.
 tool_results:
-  - basic_smiles_validation: pass (possible) - Reaction SMILES parsed successfully.
+  - basic_smiles_validation: pass - Reaction SMILES parsed successfully.
     {
       "reactant_count": 2,
       "product_count": 1
     }
   - exact_match: unknown - No reaction database backend is configured.
-  - charge_conservation: pass (likely) - Charge is conserved.
-    {
-      "charge_difference": 0
-    }
-  - mass_conservation: fail (impossible) - Element counts are not conserved and do not match a configured common omission.
-    {
-      "mass_difference_amu": 127.912,
-      "element_difference": {
-        "H": -1,
-        "I": -1
-      },
-      "possible_missing_products": [],
-      "missing_product_confidence": null,
-      "closest_stoich": null
-    }
-  - llm_reaction_fix: pass - N-methylation of the xanthine NH with methyl iodide forms the trimethylated product and requires HI as byproduct; represented as [H+].[I-] to balance H and I.
+  - llm_reaction_fix: pass - N-methylation of the xanthine NH with methyl iodide requires HI as the byproduct, represented as [H+] and [I-]. No agents were present to remove.
     {
       "original_reaction_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
       "fixed_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
@@ -95,17 +80,17 @@ tool_results:
         "[I-]"
       ]
     }
-  - basic_smiles_validation: pass (possible) - Reaction SMILES parsed successfully.
+  - basic_smiles_validation: pass - Reaction SMILES parsed successfully.
     {
       "reactant_count": 2,
       "product_count": 3
     }
   - exact_match: unknown - No reaction database backend is configured.
-  - charge_conservation: pass (likely) - Charge is conserved.
+  - charge_conservation: pass - Charge is conserved.
     {
       "charge_difference": 0
     }
-  - mass_conservation: pass (likely) - Element counts are conserved.
+  - mass_conservation: pass - Element counts are conserved.
     {
       "mass_difference_amu": 0.0,
       "element_difference": {},
@@ -113,7 +98,6 @@ tool_results:
       "missing_product_confidence": null,
       "closest_stoich": null
     }
-
 ```
 
 #### With DFT Reaction Energy Set up
@@ -142,7 +126,7 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
     "cleaned_rxn_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
     "grade": {
       "final_grade": "likely",
-      "short_reason": "ai.plausible_n_methylation_balanced",
+      "short_reason": "ai.plausible_n_methylation",
       "results": [
         {
           "name": "basic_smiles_validation",
@@ -162,31 +146,6 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
           "skipped_reason": null
         },
         {
-          "name": "charge_conservation",
-          "status": "pass",
-          "data": {
-            "charge_difference": 0
-          },
-          "comment": "Charge is conserved.",
-          "skipped_reason": null
-        },
-        {
-          "name": "mass_conservation",
-          "status": "fail",
-          "data": {
-            "mass_difference_amu": 127.912,
-            "element_difference": {
-              "H": -1,
-              "I": -1
-            },
-            "possible_missing_products": [],
-            "missing_product_confidence": null,
-            "closest_stoich": null
-          },
-          "comment": "Element counts are not conserved and do not match a configured common omission.",
-          "skipped_reason": null
-        },
-        {
           "name": "llm_reaction_fix",
           "status": "pass",
           "data": {
@@ -199,7 +158,7 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
               "[I-]"
             ]
           },
-          "comment": "N-methylation of the xanthine NH with methyl iodide forms the trimethylated product and requires HI as byproduct; represented as [H+].[I-] to balance H and I.",
+          "comment": "N-methylation of the xanthine NH with methyl iodide requires HI as the byproduct, represented as [H+] and [I-]. No agents were present to remove.",
           "skipped_reason": null
         },
         {
@@ -242,7 +201,7 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
           "skipped_reason": null
         }
       ],
-      "comment": "This is a chemically plausible N-methylation of a xanthine NH by methyl iodide to give the trimethylated product, with HI represented as [H+].[I-]. The parsed reaction is valid, charge is conserved, and the corrected/product-balanced form is mass conserved."
+      "comment": "The reaction is chemically plausible: methyl iodide can N-methylate the xanthine NH to give the trimethylated product, with HI represented as [H+] and [I-]. The SMILES parses correctly, and both charge and mass are conserved."
     }
   }
 ]
