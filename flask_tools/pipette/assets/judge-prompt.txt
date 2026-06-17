@@ -27,6 +27,9 @@ Return exactly one JSON object with this schema:
 }
 
 final_grade explanation:
-"possible but unlikely" - e.g., other products exist that would make more sense
+* "likely" - The reaction is valid and the product(s) are a likely outcome
+* "possible but unlikely" - The reaction is plausible but other products exist that would have significantly higher likelihood
+* "impossible" - The reaction is physically or chemically impossible
+* "uncertain" - With the given tools and knowledge, it is not possible to ascertain whether this reaction is possible or not. (Use this, e.g., when certain tools cannot run)
 
 Do not return markdown or any text outside the JSON object.
