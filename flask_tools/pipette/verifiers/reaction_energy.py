@@ -126,7 +126,28 @@ class MoleculeEnergyStore:
 
 
 class ReactionEnergyChecker(CacheableReactionChecker):
-    """Expects a DFTExecutor that should return a ReactionEnergyRecord. This is translated to a ToolResult in _result_from_record"""
+    """Checks if reaction energy is favorable, looking at difference between the product molecules' energy and the
+    reactants'. Threshold is set by the config value `reaction_energy_max_ev_mol` with a default of 0.2eV to include
+    endothermic reactions.
+
+    Expects a DFTExecutor that should return a ReactionEnergyRecord. This is translated to a ToolResult in _result_from_record
+
+    ToolResult example:
+        ToolResult(
+            name=self.name,
+            status=ToolStatus.PASS if passed else ToolStatus.FAIL,
+            data={
+                "energy_difference_ev_mol": record.energy_difference_ev_mol,
+                "source": record.source,  # dft or database name
+                "metadata": record.metadata,  # additional dict of metadata
+            },
+            comment=(
+                "Reaction energy is within the allowed threshold."
+                if passed
+                else "Reaction energy exceeds the allowed threshold."
+            ),
+        )
+    """
 
     name = "reaction_energy"
 
@@ -210,7 +231,6 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         return self.result_from_energies(record)
 
     def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
-        """If using fake dft, return a fake passing result"""
         reactants, _, products = parse_reaction_smi(
             rxn_smiles, ret_mol=False
         )  # strings

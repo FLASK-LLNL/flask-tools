@@ -14,6 +14,7 @@ def total_charge(molecules: list[object]) -> int:
 
 
 def charge_difference(rxn_smiles: str) -> int:
+    """Checks of charge is balanced across for A and B for A>>B or A>C>B"""
     reactants, _, products = parse_reaction_smi(rxn_smiles)
     return total_charge(products) - total_charge(reactants)
 
@@ -30,6 +31,8 @@ def check_charge_conservation(rxn_smiles: str) -> tuple[bool, str]:
 
 
 class ChargeConservationChecker(ReactionChecker):
+    """Checks of charge is balanced across for A and B for A>>B or A>C>B"""
+
     name = "charge_conservation"
     stops_on_fail = True
 

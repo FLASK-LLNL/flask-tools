@@ -58,9 +58,9 @@ def canonicalize_smiles(smiles: str) -> str:
 def canonicalize_reaction_smiles(
     rxn_smiles: str, *, include_agents: bool = True
 ) -> str:
-    """Canonicalize a reaction SMILES string, stripping reagents by default.
-    Accepts XXX.YYY>>ZZZ or XXX>YYY>ZZZ.
-    Returns string XXX>ZZZ
+    """Canonicalize a reaction SMILES string, stripping reagents (C in A>C>B) by default.
+    Accepts A>B or A>C>B
+    Returns string A>B
     """
     reactants, agents, products = split_reaction_smiles(rxn_smiles)
 

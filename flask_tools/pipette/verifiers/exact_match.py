@@ -23,6 +23,23 @@ class ReactionDatabase(Protocol):
 
 
 class ExactMatchChecker(ReactionChecker):
+    """Check if a rxn exists in the database. For rxns with reagents separated (A>C>B), will check without
+    the reagent if it cannot find a match with them.
+    ToolResult example:
+        ToolResult(
+            name="exact_match",
+            status=ToolStatus.PASS,
+            data={
+                "found": {
+                    "source": match.source,
+                    "record_id": match.record_id,
+                    "matched_without_agents": False,
+                }
+            },
+            comment="Found an exact reaction match in the configured database.",
+        )
+    """
+
     name = "exact_match"
 
     def __init__(self, database: ReactionDatabase | None = None) -> None:
@@ -32,7 +49,7 @@ class ExactMatchChecker(ReactionChecker):
         if self.database is None:
             return ToolResult(
                 name=self.name,
-                status=ToolStatus.UNKNOWN,
+                status=ToolStatus.NOT_RUN,
                 comment="No reaction database backend is configured.",
             )
 

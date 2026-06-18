@@ -1,3 +1,20 @@
+"""
+A CLI tool and main entry point to pipette. See pipette/README.md for more details.
+
+Usage:
+python -m flask_tools.pipette.grade_rxn --rxn-smi 'Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C'
+
+Or:
+from flask_tools.pipette.grade_rxn import grade_reaction
+from flask_tools.pipette.config import load_config
+
+result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"]) # Optionally, config='llm-judge' or "file.yaml"
+
+# Or
+config = load_config('llm-judge')
+result = grade_reaction(["Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C"], config=config)
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -23,7 +40,7 @@ REACTION_SMILES_COLUMNS = (
 
 
 def _get_possible_fixed_rxn_smi(reaction_grade: ReactionGrade) -> str | None:
-    """Return a fixed reaction SMILES string when the fixer tool produced one."""
+    """Return a fixed reaction SMILES string if fixer was one of the tool calls."""
     tool_res: ToolResult
     for tool_res in reaction_grade.results:
         if tool_res.name == "llm_reaction_fix":

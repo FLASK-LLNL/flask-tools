@@ -134,6 +134,23 @@ def load_solvent_rules(solvents_path: Path) -> list[MissingProductRule]:
 
 
 class MassConservationChecker(ReactionChecker):
+    """Checks the reactants and products have equal mass. Certain mass differences are allowed if it corresponds
+    with common solvents or a missing H
+    ToolResult example :
+        ToolResult(
+            name="mass_conservation",
+            status=ToolStatus.PASS,
+            data={
+                "mass_difference_amu": 0.0,
+                "element_difference": {},
+                "possible_missing_products": [],
+                "missing_product_confidence": None,
+                "closest_stoich": None,
+            },
+            comment="Element counts are conserved.",
+        )
+    """
+
     name = "mass_conservation"
 
     def __init__(self, config: PipetteConfig) -> None:

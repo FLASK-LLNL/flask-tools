@@ -42,12 +42,14 @@ def resolve_llm_base_url(explicit_base_url: str | None = None) -> str:
 
 
 class ToolStatus(str, Enum):
-    FAIL = "fail"
-    POTENTIAL = "potential"
-    PASS = "pass"
-    UNKNOWN = "unknown"
-    NOT_RUN = "not_run"
-    ERROR = "error"
+    FAIL = "fail"  # Result indicating a rxn is invalid
+    POTENTIAL = (
+        "potential"  # Result indicates rxn may be possible... # Todo: Decide if we keep
+    )
+    PASS = "pass"  # Result indicating a rxn is definitely valid
+    UNKNOWN = "unknown"  # Result was ambiguous
+    NOT_RUN = "not_run"  # Tool was not called (skipped because of prior tool)
+    ERROR = "error"  # Tool call errored out
 
 
 class FinalGrade(str, Enum):

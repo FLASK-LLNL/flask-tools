@@ -55,6 +55,17 @@ def resolve_tool_list(
 
 
 class GradingPipeline:
+    """Pipeline to call tools. See GradingPipeline.grade(), which takes a list of reaction SMILES and yields
+    `ReactionGrade`s. See README for more details.
+
+    Example:
+        pipeline = build_default_pipeline()
+        reaction_grades = list(pipeline.grade([rxn_smi0, rxn_smi1]))  # grade() yields `ReactionGrade`s
+
+        print(reaction_grades[0].final_grade, reaction_grades[0].comment)
+        print(reaction_grades[0].tool_results)
+    """
+
     def __init__(
         self,
         checkers: list[ReactionChecker],
@@ -304,28 +315,34 @@ def build_default_pipeline(
     reaction_fixer: AsyncLLMReactionFixer | None = None,
     checker_factories: dict[str, CheckerFactory] | None = None,
 ) -> GradingPipeline:
-    resolved = config or PipetteConfig()
-    factories = checker_factories or {
+    """Builds a `GradingPipeline`
+    Uses the provided or default `PipetteConfig`, and makes a `GradingPipeline` with the
+    tools specified in the config's `tool_list`. `tool_list` can be "all" or a list of names (see the `name`
+    attribute of `ReactionChecker`).
+    """
+    # Edit this function when adding new `ReactionChecker`s
+    config = config or PipetteConfig()
+    possible_checker_factories = checker_factories or {
         "basic_smiles_validation": lambda _: BasicSmilesValidationChecker(),
         "exact_match": lambda _: ExactMatchChecker(),
         "charge_conservation": lambda _: ChargeConservationChecker(),
-        "mass_conservation": lambda current: MassConservationChecker(current),
-        "reaction_energy": lambda current: ReactionEnergyChecker(
-            current,
+        "mass_conservation": lambda config: MassConservationChecker(config),
+        "reaction_energy": lambda config: ReactionEnergyChecker(
+            config,
             database=(
-                str(current.tools_settings.reaction_energy.database)
-                if current.tools_settings.reaction_energy.database is not None
+                str(config.tools_settings.reaction_energy.database)
+                if config.tools_settings.reaction_energy.database is not None
                 else None
             ),
         ),
     }
     selected_names = resolve_tool_list(
-        resolved.tool_list, list(factories), use_dft=config.rules.use_dft
+        config.tool_list, list(possible_checker_factories), use_dft=config.rules.use_dft
     )
-    checkers = [factories[name](resolved) for name in selected_names]
+    checkers = [possible_checker_factories[name](config) for name in selected_names]
     return GradingPipeline(
         checkers=checkers,
-        config=resolved,
+        config=config,
         judge=judge,
         reaction_fixer=reaction_fixer,
     )
