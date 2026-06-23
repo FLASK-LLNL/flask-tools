@@ -95,7 +95,7 @@ def main(
             - cleaned_rxn_smiles: rxn_smiles after balancing, which may or may not be different
             - grade: a dictionary of the final grade. The keys are:
                 - final_grade: The reaction's grade. Possible values are todo
-                - short_reason: a short comment explaining the grade
+                - short_comment: a short comment explaining the grade
                 - comment: a comment explaining the grade
                 - results: a list of results from sub tools. Each result is a dictionary. Important keys in these are:
                     - name: the name of the tool
@@ -110,7 +110,7 @@ def main(
         "cleaned_rxn_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
         "grade": {
           "final_grade": "likely",
-          "short_reason": "ai.plausible_n_methylation",
+          "short_comment": "ai.plausible_n_methylation",
           "results": [
             {
               "name": "basic_smiles_validation",

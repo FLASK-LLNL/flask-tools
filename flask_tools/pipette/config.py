@@ -218,7 +218,7 @@ class PipetteConfig:
     rules: TopLevelConfig = field(default_factory=TopLevelConfig)
     tools_settings: ToolsConfig = field(default_factory=ToolsConfig)
     solvent_catalog_path: Path = field(
-        default_factory=lambda: package_data_path("solvents.csv")
+        default_factory=lambda: package_data_path("solvents.tsv")
     )
 
     @classmethod
@@ -261,7 +261,7 @@ class PipetteConfig:
                 base_dir=resolved_base_dir,
             ),
             solvent_catalog_path=solvent_catalog_path
-            or package_data_path("solvents.csv"),
+            or package_data_path("solvents.tsv"),
         )
 
     @classmethod

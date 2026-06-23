@@ -11,8 +11,10 @@ from ..config import PipetteConfig
 from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
 from ..smiles import (
     split_reaction_smiles,
-    smiles_to_inchi_key,
+    smiles_to_inchi,
     parse_reaction_smi,
+    canonicalize_smiles,
+    canonicalize_reaction_smiles,
 )
 
 
@@ -43,36 +45,40 @@ class CSVCache:
         current_rows: dict[str, dict[str, object]] = {}
         if not path.exists():
             return {}
+        delim = "\t" if str(path).endswith("tsv") else ","
         with path.open(newline="", encoding="utf-8") as handle:
-            reader = csv.DictReader(handle)
+            reader = csv.DictReader(handle, delimiter=delim)
             for row in reader:
-                inchi_key = (row.get("inchi_key") or "").strip()
-                smiles = (row.get("smiles") or "").strip()
+                inchi = (row.get("inchi") or "").strip()
                 raw_energy = (row.get("energy_ev_mol") or "").strip()
-                if not inchi_key or not raw_energy:
+                if not inchi or not raw_energy:
                     continue
-                current_rows[inchi_key] = {
-                    "smiles": smiles,
+                current_rows[inchi] = {
                     "energy_ev_mol": float(raw_energy),
                 }
+            if not len(current_rows):
+                print(
+                    f"Warning: {path} provided but could not parse rows. Used delimiter '{delim}'"
+                )
         return current_rows
 
-    def update_csv(self, rows_by_inchi_key: dict[str, dict[str, object]]) -> None:
+    def update_csv(self, rows_by_inchi: dict[str, dict[str, object]]) -> None:
         current_rows: dict[str, dict[str, object]] = self.get_rows_from_csv(self.path)
 
-        current_rows.update(rows_by_inchi_key)
+        current_rows.update(rows_by_inchi)
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("w", newline="", encoding="utf-8") as handle:
             writer = csv.DictWriter(
-                handle, fieldnames=["inchi_key", "smiles", "energy_ev_mol"]
+                handle,
+                fieldnames=["inchi", "energy_ev_mol"],
+                delimiter="\t",
             )
             writer.writeheader()
-            for inchi_key in sorted(current_rows):
+            for inchi in sorted(current_rows):
                 writer.writerow(
                     {
-                        "inchi_key": inchi_key,
-                        "smiles": current_rows[inchi_key]["smiles"],
-                        "energy_ev_mol": current_rows[inchi_key]["energy_ev_mol"],
+                        "inchi": inchi,
+                        "energy_ev_mol": current_rows[inchi]["energy_ev_mol"],
                     }
                 )
 
@@ -80,20 +86,20 @@ class CSVCache:
 @dataclass
 class MoleculeEnergyStore:
     path: Path
-    energies_by_inchi_key: dict[str, float]
+    energies_by_inchi: dict[str, float]
     csv_cache: CSVCache | None = None
 
     @classmethod
     def from_csv(cls, path: str | Path) -> MoleculeEnergyStore:
         resolved_path = Path(path).expanduser().resolve()
         rows = CSVCache.get_rows_from_csv(resolved_path)
-        energies_by_inchi_key: dict[str, float] = {
+        energies_by_inchi: dict[str, float] = {
             k: v["energy_ev_mol"] for k, v in rows.items()
         }
 
         return cls(
             path=resolved_path,
-            energies_by_inchi_key=energies_by_inchi_key,
+            energies_by_inchi=energies_by_inchi,
             csv_cache=CSVCache(resolved_path),
         )
 
@@ -106,17 +112,17 @@ class MoleculeEnergyStore:
             records = [records]
         update: dict[str, dict[str, object]] = {}
         for record in records:  # noqa
-            inchi = smiles_to_inchi_key(record.smi)
+            inchi = smiles_to_inchi(record.smi)
             update[inchi] = {
-                "inchi_key": inchi,
+                "inchi": inchi,
                 "energy_ev_mol": record.energy_ev,
             }
-            self.energies_by_inchi_key[inchi] = record.energy_ev
+            self.energies_by_inchi[inchi] = record.energy_ev
         if self.csv_cache is not None:
             self.csv_cache.update_csv(update)
 
     def lookup(self, mol_smi: str) -> MoleculeEnergyRecord | None:
-        energy = self.energies_by_inchi_key.get(smiles_to_inchi_key(mol_smi), None)
+        energy = self.energies_by_inchi.get(smiles_to_inchi(mol_smi), None)
         if energy is None:
             return None
         else:
@@ -163,11 +169,11 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         if not isinstance(database, str):
             self.store = database
         else:
-            if database_str.endswith(".csv"):
+            if database_str.endswith((".csv", ".tsv")):
                 self.store = MoleculeEnergyStore.from_csv(database_str)
             else:
                 raise ValueError(
-                    f"Unsupported reaction energy database format, only csv supported: {database_str}"
+                    f"Unsupported reaction energy database format, only csv & tsv supported: {database_str}"
                 )
         if dft_executor is not None:
             self.dft_executor = dft_executor
@@ -207,7 +213,10 @@ class ReactionEnergyChecker(CacheableReactionChecker):
     def check_cache(self, rxn_smi: str) -> None | ToolResult:
         if self.store is None:
             return None
-        reactants, _, products = parse_reaction_smi(rxn_smi, ret_mol=False)  # strings
+        reactants: list[str]
+        reactants, _, products = parse_reaction_smi(
+            canonicalize_reaction_smiles(rxn_smi), ret_mol=False
+        )
 
         energies = {}
         role_total_energies = {"reactants": 0, "products": 0}

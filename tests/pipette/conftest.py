@@ -54,11 +54,11 @@ class RecordingJudge:
         self,
         *,
         final_grade: FinalGrade = FinalGrade.POSSIBLE,
-        short_reason: str = "ai.mock_judge",
+        short_comment: str = "ai.mock_judge",
         comment: str = "Stub AI judge result.",
     ) -> None:
         self.final_grade = final_grade
-        self.short_reason = short_reason
+        self.short_comment = short_comment
         self.comment = comment
         self.calls: list[tuple[str, list[ToolResult]]] = []
 
@@ -71,7 +71,7 @@ class RecordingJudge:
         self.calls.append((rxn_smiles, captured_results))
         return ReactionGrade(
             final_grade=self.final_grade,
-            short_reason=self.short_reason,
+            short_comment=self.short_comment,
             results=captured_results,
             comment=self.comment,
         )

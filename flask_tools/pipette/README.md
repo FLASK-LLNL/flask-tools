@@ -60,7 +60,7 @@ Configs can also be a custom yaml file.
 Example human-readable output
 ```aiignore
 Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C:
-ReactionGrade(final_grade=likely, short_reason=ai.plausible_n_methylation)
+ReactionGrade(final_grade=likely, short_comment=plausible_n_methylation)
 comment: The reaction is chemically plausible: methyl iodide can N-methylate the xanthine NH to give the trimethylated product, with HI represented as [H+] and [I-]. The SMILES parses correctly, and both charge and mass are conserved.
 tool_results:
   - basic_smiles_validation: pass - Reaction SMILES parsed successfully.
@@ -126,7 +126,7 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
     "cleaned_rxn_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
     "grade": {
       "final_grade": "likely",
-      "short_reason": "ai.plausible_n_methylation",
+      "short_comment": "plausible_n_methylation",
       "results": [
         {
           "name": "basic_smiles_validation",

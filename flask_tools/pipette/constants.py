@@ -43,9 +43,6 @@ def resolve_llm_base_url(explicit_base_url: str | None = None) -> str:
 
 class ToolStatus(str, Enum):
     FAIL = "fail"  # Result indicating a rxn is invalid
-    POTENTIAL = (
-        "potential"  # Result indicates rxn may be possible... # Todo: Decide if we keep
-    )
     PASS = "pass"  # Result indicating a rxn is definitely valid
     UNKNOWN = "unknown"  # Result was ambiguous
     NOT_RUN = "not_run"  # Tool was not called (skipped because of prior tool)
@@ -53,10 +50,10 @@ class ToolStatus(str, Enum):
 
 
 class FinalGrade(str, Enum):
-    LIKELY = "likely"
-    POSSIBLE = "possible but unlikely"
-    IMPOSSIBLE = "impossible"
-    UNCERTAIN = "uncertain/cannot determine"
+    LIKELY = "likely"  # The reaction is valid and the product(s) are a likely outcome
+    POSSIBLE = "possible but unlikely"  # The reaction is plausible but other products exist that would have significantly higher likelihood
+    IMPOSSIBLE = "impossible"  # The reaction is physically or chemically impossible
+    UNCERTAIN = "uncertain/cannot determine"  #  With the given tools and knowledge, it is not possible to ascertain whether this reaction is possible or not. (Use this, e.g., when certain tools cannot run)
 
 
 @dataclass
@@ -82,13 +79,13 @@ class ToolResult:
 @dataclass
 class ReactionGrade:
     final_grade: FinalGrade
-    short_reason: str
+    short_comment: str
     results: list[ToolResult]
     comment: str = ""
 
     def __str__(self) -> str:
         lines = [
-            f"ReactionGrade(final_grade={self.final_grade.value}, short_reason={self.short_reason})"
+            f"ReactionGrade(final_grade={self.final_grade.value}, short_comment={self.short_comment})"
         ]
         if self.comment:
             lines.append(f"comment: {self.comment}")

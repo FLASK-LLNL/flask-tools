@@ -6,7 +6,7 @@ You will receive:
 
 Each item in `tool_results` includes:
 - `name`: tool name.
-- `status`: one of `fail`, `potential`, `pass`, `unknown`, `not_run`, or `error`.
+- `status`: one of `pass`, `fail`, `unknown`, `not_run`, or `error`. `pass` means the reaction is reasonable from at least that tool's perspective.
 - `data`: the tool-specific structured payload.
 - `comment`: the tool's natural-language summary.
 - `skipped_reason`: why the tool was skipped, when present.
@@ -22,7 +22,7 @@ Judge the overall plausibility of the reaction using all provided tool outputs.
 Return exactly one JSON object with this schema:
 {
   "final_grade": "likely|possible but unlikely|impossible|uncertain/cannot determine",
-  "short_reason": "ai.<short_reason>",
+  "short_comment": "ai.<short_comment>",
   "comment": "brief explanation"
 }
 

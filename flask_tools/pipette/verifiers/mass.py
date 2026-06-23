@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from rdkit import Chem
+from rdkit.Chem import MolToSmiles, MolFromInchi
 
 from .base import ReactionChecker
 from ..config import PipetteConfig
@@ -113,9 +114,10 @@ def load_solvent_rules(solvents_path: Path) -> list[MissingProductRule]:
     rules: list[MissingProductRule] = []
 
     with solvents_path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, delimiter="\t")
         for row in reader:
-            smiles = (row.get("smiles") or "").strip()
+            inchi = (row.get("inchi") or "").strip()
+            smiles = MolToSmiles(MolFromInchi(inchi))
             name = (row.get("common_name") or "").strip()
             commonness = (row.get("commonness") or "").strip().lower() or "low"
             if not smiles or not name:
@@ -190,7 +192,7 @@ class MassConservationChecker(ReactionChecker):
             best_match = matches[0]
             return ToolResult(
                 name=self.name,
-                status=ToolStatus.POTENTIAL,
+                status=ToolStatus.PASS,
                 data={
                     "mass_difference_amu": best_match["mass_amu"],
                     "element_difference": delta,

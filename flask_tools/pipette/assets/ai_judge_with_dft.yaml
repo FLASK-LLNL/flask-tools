@@ -1,7 +1,7 @@
 tool_list: all
 tools_settings:
   reaction_energy:
-    database: ../data/fake_fake_molecule_energies.csv
+    database: null
 llm_judge:
   allow_fail:
     - exact_match

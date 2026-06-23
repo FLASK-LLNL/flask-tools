@@ -74,7 +74,7 @@ class ExactMatchChecker(ReactionChecker):
         if match is not None:
             return ToolResult(
                 name=self.name,
-                status=ToolStatus.POTENTIAL,
+                status=ToolStatus.PASS,
                 data={
                     "found": {
                         "source": match.source,

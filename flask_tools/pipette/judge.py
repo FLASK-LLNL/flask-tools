@@ -21,7 +21,7 @@ class ReactionGradeResponse(BaseModel):
     final_grade: Literal[
         "likely", "possible but unlikely", "impossible", "uncertain/cannot determine"
     ]
-    short_reason: str = "ai.llm_judge"
+    short_comment: str = "llm_judge"
     comment: str = ""
 
 
@@ -111,7 +111,7 @@ class BaseLLMJudge:
 
         return ReactionGrade(
             final_grade=final_grade,
-            short_reason=parsed.short_reason,
+            short_comment=parsed.short_comment,
             results=list(results),
             comment=parsed.comment,
         )

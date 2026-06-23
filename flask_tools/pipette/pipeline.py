@@ -123,8 +123,9 @@ class GradingPipeline:
             basic.status is ToolStatus.PASS
             and exact_match.status is ToolStatus.UNKNOWN
             and charge.status is ToolStatus.PASS
-            # and mass.status is ToolStatus.FAIL
-            and mass.status in (ToolStatus.FAIL, ToolStatus.POTENTIAL)
+            # if mass fails, or even if difference is likely a common solvent
+            and mass.status == ToolStatus.FAIL
+            or mass.data["mass_difference_amu"]
         )
 
     @staticmethod
@@ -137,7 +138,7 @@ class GradingPipeline:
             return result
         return ReactionGrade(
             final_grade=result.final_grade,
-            short_reason=result.short_reason,
+            short_comment=result.short_comment,
             results=[tool_result for _, _, tool_result in prefix_results],
             comment=result.comment,
         )

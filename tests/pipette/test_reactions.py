@@ -96,7 +96,7 @@ def test_calls_fixer_caffeine_llm_judge(rxn_name: str) -> None:
     assert (
         result.final_grade in rxn_to_test.accepted_grades
     ), f"{(result.final_grade, fix_result)}"
-    assert result.short_reason.startswith(
+    assert result.short_comment.startswith(
         "ai."
     )  # Prompt requests this format for the short reason
 
@@ -189,7 +189,7 @@ def test_pipeline_fixed_reaction(
     # dbg_file = tests_relative_path / "tool_res.json"
     # result2 = copy(result)
     # result2.final_grade = None
-    # result2.short_reason = None
+    # result2.short_comment = None
     # result2.short_comment = None
     # result2.comment = None
     # res_dict = asdict(result2)
@@ -212,7 +212,7 @@ def test_pipeline_fixed_reaction(
     assert charge.calls == [fixed]
     assert mass.calls == [fixed]
     assert reaction_energy.calls == [fixed]
-    assert result.short_reason.startswith("ai.")
+    assert result.short_comment.startswith("ai.")
     assert [tool.name for tool in result.results] == [
         "basic_smiles_validation",
         "exact_match",

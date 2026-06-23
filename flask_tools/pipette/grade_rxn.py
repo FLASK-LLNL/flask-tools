@@ -119,14 +119,16 @@ def grade_reactions_json(
 
 def load_reaction_smiles_file(path: str | Path) -> list[str]:
     file_path = Path(path).expanduser().resolve()
-    if file_path.suffix.lower() == ".csv":
+    if file_path.suffix.lower() == ".tsv":
         return _load_reaction_smiles_csv(file_path)
+    elif file_path.suffix.lower() == ".csv":
+        return _load_reaction_smiles_csv(file_path, delimiter=",")
     return _load_reaction_smiles_lines(file_path)
 
 
-def _load_reaction_smiles_csv(path: Path) -> list[str]:
+def _load_reaction_smiles_csv(path: Path, delimiter="\t") -> list[str]:
     with path.open(newline="", encoding="utf-8") as handle:
-        reader = csv.DictReader(handle)
+        reader = csv.DictReader(handle, delimiter=delimiter)
         if reader.fieldnames is None:
             return []
 

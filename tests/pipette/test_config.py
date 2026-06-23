@@ -19,7 +19,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
               - reaction_energy
             tools_settings:
               reaction_energy:
-                database: fake_molecule_energies.csv
+                database: fake_molecule_energies.tsv
             llm_judge:
               allow_fail:
                 - reaction_energy
@@ -39,7 +39,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
               mass_tolerance_atoms: 2
               reaction_energy_max_ev_mol: 9.5
               use_dft: true
-            solvent_catalog_path: solvents.csv
+            solvent_catalog_path: solvents.tsv
             """
         ).strip()
         + "\n",
@@ -51,14 +51,14 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     # Test that paths are relative to the yaml file
     assert (
         config.tools_settings.reaction_energy.database
-        == (tmp_path / "fake_molecule_energies.csv").resolve()
+        == (tmp_path / "fake_molecule_energies.tsv").resolve()
     )
     assert config.llm_judge.prompt_path == (tmp_path / "judge-prompt.txt").resolve()
     assert (
         config.llm_reaction_fixer.prompt_path
         == (tmp_path / "fixer-prompt.txt").resolve()
     )
-    assert config.solvent_catalog_path == (tmp_path / "solvents.csv").resolve()
+    assert config.solvent_catalog_path == (tmp_path / "solvents.tsv").resolve()
 
     # Test other attrs are set correctly
     assert config.tool_list == ["basic_smiles_validation", "reaction_energy"]

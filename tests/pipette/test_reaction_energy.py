@@ -3,7 +3,7 @@ from __future__ import annotations
 from textwrap import dedent
 
 from rdkit.Chem import MolFromSmiles
-from rdkit.Chem.inchi import MolToInchiKey
+from rdkit.Chem.inchi import MolToInchiKey, MolToInchi
 
 from flask_tools.pipette.verifiers.reaction_energy import (
     MoleculeEnergyStore,
@@ -12,16 +12,16 @@ from flask_tools.pipette.verifiers.reaction_energy import (
 
 # Should this be removed completely b/c DFT calculation is not implemented rn?
 def test_molecule_energy_store_from_csv(tmp_path) -> None:
-    smiles_to_inchi_key = lambda x: MolToInchiKey(MolFromSmiles(x))
-    path = tmp_path / "fake_molecule_energies.csv"
-    ethanol_inchi = smiles_to_inchi_key(eth_smi := "CCO")
-    acetaldehyde_inchi = smiles_to_inchi_key(acetal_smi := "CC=O")
+    smiles_to_inchi = lambda x: MolToInchi(MolFromSmiles(x))
+    path = tmp_path / "fake_molecule_energies.tsv"
+    ethanol_inchi = smiles_to_inchi(eth_smi := "CCO")
+    acetaldehyde_inchi = smiles_to_inchi(acetal_smi := "CC=O")
     path.write_text(
         dedent(
             f"""
-            inchi_key,energy_ev_mol
-            {ethanol_inchi},-7.0
-            {acetaldehyde_inchi},-10.0
+            inchi\tenergy_ev_mol
+            {ethanol_inchi}\t-7.0
+            {acetaldehyde_inchi}\t-10.0
             """
         ).strip()
         + "\n",

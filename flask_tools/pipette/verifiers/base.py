@@ -37,4 +37,5 @@ class CacheableReactionChecker(ReactionChecker):
 
     @abstractmethod
     def check_cache(self, rxn_smiles: str) -> None | ToolResult:
+        # Remember to canonicalize first
         raise NotImplementedError

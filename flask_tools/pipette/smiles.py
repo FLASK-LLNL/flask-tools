@@ -48,9 +48,11 @@ def parse_reaction_smi(
     )
 
 
-def canonicalize_smiles(smiles: str) -> str:
+def canonicalize_smiles(smiles: str, allow_fail=False) -> str:
     molecule = Chem.MolFromSmiles(smiles)
     if molecule is None:
+        if allow_fail:
+            return smiles
         raise ValueError(f"Invalid SMILES: {smiles!r}")
     return Chem.MolToSmiles(molecule, canonical=True)
 
@@ -78,14 +80,14 @@ def canonicalize_reaction_smiles(
     return f"{canonical_reactants}>>{canonical_products}"
 
 
-def smiles_to_inchi_key(smiles: str) -> str:
+def smiles_to_inchi(smiles: str) -> str:
     molecule = Chem.MolFromSmiles(smiles)
     if molecule is None:
         raise ValueError(f"Invalid SMILES component: {smiles!r}")
 
-    inchi_key = Chem.MolToInchiKey(molecule)
-    if not inchi_key:
+    inchi = Chem.MolToInchi(molecule)
+    if not inchi:
         raise ValueError(
             f"Could not generate an InChIKey for SMILES component: {smiles!r}"
         )
-    return inchi_key
+    return inchi
