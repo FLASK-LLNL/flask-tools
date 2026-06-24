@@ -77,7 +77,7 @@ class BaseLLMReactionFixer:
         )
 
     @property
-    def prompt(self) -> str:
+    def system_prompt(self) -> str:
         if self._prompt is not None:
             return self._prompt
         return self.prompt_path.read_text(encoding="utf-8")
@@ -170,7 +170,7 @@ class LLMReactionFixer(BaseLLMReactionFixer):
             sort_keys=True,
         )
         response_text = query_task(
-            system_prompt=self.prompt,
+            system_prompt=self.system_prompt,
             user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,
@@ -199,7 +199,7 @@ class AsyncLLMReactionFixer(BaseLLMReactionFixer):
             sort_keys=True,
         )
         response_text = await query_task_async(
-            system_prompt=self.prompt,
+            system_prompt=self.system_prompt,
             user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,

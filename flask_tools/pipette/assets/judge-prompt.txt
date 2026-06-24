@@ -19,12 +19,6 @@ Tool meanings:
 - `reaction_energy`: evaluates whether the reaction energy is chemically plausible from cached or fake DFT results.
 
 Judge the overall plausibility of the reaction using all provided tool outputs.
-Return exactly one JSON object with this schema:
-{
-  "final_grade": "likely|possible but unlikely|impossible|uncertain",
-  "short_comment": "ai.<short_comment>",
-  "comment": "brief explanation"
-}
 
 final_grade explanation:
 * "likely" - The reaction is valid and the product(s) are a likely outcome

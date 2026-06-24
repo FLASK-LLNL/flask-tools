@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal, TypeVar
+from typing import Literal, TypeVar, Any
 
 from pydantic import BaseModel
 
@@ -18,7 +18,7 @@ from .llm_query import query_task, query_task_async
 
 
 class ReactionGradeResponse(BaseModel):
-    final_grade: Literal["likely", "possible but unlikely", "impossible", "uncertain"]
+    final_grade: FinalGrade
     short_comment: str = "llm_judge"
     comment: str = ""
 
@@ -63,33 +63,24 @@ class BaseLLMJudge:
         )
 
     @property
-    def prompt(self) -> str:
+    def system_prompt(self) -> str:
         if self._prompt is not None:
             return self._prompt
         return self.prompt_path.read_text(encoding="utf-8")
 
-    def _serialize_results(self, results: list[ToolResult]) -> list[dict[str, object]]:
-        serialized: list[dict[str, object]] = [r.to_json_dict() for r in results]
-        for s in serialized:
-            del s["skipped_reason"]
-        return serialized
-
-    def _build_messages(
+    def _build_user_payload(
         self, rxn_smiles: str, results: list[ToolResult]
-    ) -> list[dict[str, str]]:
+    ) -> dict[str, Any]:
+        serialized_results: list[dict[str, object]] = [
+            r.to_json_dict() for r in results
+        ]
+        for s in serialized_results:
+            del s["skipped_reason"]
         user_payload = {
             "reaction_smiles": rxn_smiles,
-            "tool_results": self._serialize_results(results),
+            "tool_results": serialized_results,
         }
-        return [
-            {"role": "system", "content": self.prompt},
-            {
-                "role": "user",
-                "content": json.dumps(
-                    user_payload, indent=2, sort_keys=True, default=str
-                ),
-            },
-        ]
+        return user_payload
 
     def _parse_reaction_grade(
         self,
@@ -97,21 +88,16 @@ class BaseLLMJudge:
         results: list[ToolResult],
     ) -> ReactionGrade:
         try:
-            parsed = ReactionGradeResponse.model_validate_json(response_text)
+            parsed: ReactionGradeResponse = ReactionGradeResponse.model_validate_json(
+                response_text
+            )
         except Exception as exc:
             raise ValueError(
                 f"LLM judge did not return valid JSON: {response_text}"
             ) from exc
 
-        try:
-            final_grade = FinalGrade(parsed.final_grade)
-        except ValueError as exc:
-            raise ValueError(
-                f"LLM judge returned unsupported final_grade: {parsed.final_grade!r}"
-            ) from exc
-
         return ReactionGrade(
-            final_grade=final_grade,
+            final_grade=parsed.final_grade,
             short_comment=parsed.short_comment,
             results=list(results),
             comment=parsed.comment,
@@ -124,10 +110,14 @@ class AsyncLLMJudge(BaseLLMJudge):
         rxn_smiles: str,
         results: list[ToolResult],
     ) -> ReactionGrade:
-        messages = self._build_messages(rxn_smiles, results)
+        user_prompt = json.dumps(
+            self._build_user_payload(rxn_smiles, results),
+            indent=2,
+            sort_keys=True,
+        )
         response_text = await query_task_async(
-            system_prompt=messages[0]["content"],
-            user_prompt=messages[1]["content"],
+            system_prompt=self.system_prompt,
+            user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,
             url=self.url,
@@ -144,10 +134,14 @@ class LLMJudge(BaseLLMJudge):
         rxn_smiles: str,
         results: list[ToolResult],
     ) -> ReactionGrade:
-        messages = self._build_messages(rxn_smiles, results)
+        user_prompt = json.dumps(
+            self._build_user_payload(rxn_smiles, results),
+            indent=2,
+            sort_keys=True,
+        )
         response_text = query_task(
-            system_prompt=messages[0]["content"],
-            user_prompt=messages[1]["content"],
+            system_prompt=self.system_prompt,
+            user_prompt=user_prompt,
             model=self.model,
             api_key=self.api_key,
             url=self.url,

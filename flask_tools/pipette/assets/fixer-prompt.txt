@@ -5,9 +5,3 @@ Your job:
 - Balance the reaction by adding missing byproducts or counter-species to the reactant or product side when needed. Do not ignore [H+]
 - Preserve the main transformation instead of inventing a different reaction.
 - Return valid SMILES
-- Return exactly one JSON object with this schema:
-{
-  "fixed_reaction_smiles": "...",
-  "comment": "brief explanation"
-}
-- Do not return markdown or any text outside the JSON object.
