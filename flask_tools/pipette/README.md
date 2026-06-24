@@ -19,8 +19,8 @@ The current pipeline includes:
   - an AI-judge pipeline interface that can run selected tools and hand the results
     to an external LLM judge
 
-You must have one of `FLASK_ORCHESTRATOR_API_KEY, OPENAI_API_KEY, or PIPETTE_API_KEY` set in your environment.
-Optional: `FLASK_ORCHESTRATOR_MODEL, FLASK_ORCHESTRATOR_URL`
+You must have an api key set with an environment variable, either `FLASK_ORCHESTRATOR_API_KEY, OPENAI_API_KEY, or PIPETTE_API_KEY`.
+Optional: Setting the LLM model with `FLASK_ORCHESTRATOR_MODEL`, and setting the LLM url with `FLASK_ORCHESTRATOR_URL or PIPETTE_LLM_BASE_URL`
 
 
 ## Install

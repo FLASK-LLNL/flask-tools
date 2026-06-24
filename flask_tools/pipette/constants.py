@@ -7,8 +7,6 @@ import json
 import os
 from typing import Any
 
-DEFAULT_LLM_BASE_URL = "https://livai-api.llnl.gov/v1/"
-
 LLM_API_KEY_ENV_VARS = (
     "FLASK_ORCHESTRATOR_API_KEY",
     "PIPETTE_API_KEY",
@@ -17,7 +15,6 @@ LLM_API_KEY_ENV_VARS = (
 
 LLM_BASE_URL_ENV_VARS = (
     "FLASK_ORCHESTRATOR_URL",
-    "LLM_BASE_URL",
     "PIPETTE_LLM_BASE_URL",
 )
 
@@ -39,7 +36,11 @@ def resolve_llm_base_url(explicit_base_url: str | None = None) -> str:
         base_url = os.environ.get(env_var)
         if base_url:
             return base_url
-    return DEFAULT_LLM_BASE_URL
+    else:
+        raise ValueError(f"One of {LLM_BASE_URL_ENV_VARS} is required.")
+
+
+DEFAULT_LLM_BASE_URL = resolve_llm_base_url()
 
 
 class ToolStatus(str, Enum):

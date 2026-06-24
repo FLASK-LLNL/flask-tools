@@ -6,15 +6,17 @@
 ################################################################################
 
 """Necessary env vars for LLM steps:
-One of:
+An api key, either:
     "FLASK_ORCHESTRATOR_API_KEY"
     "PIPETTE_API_KEY"
     "OPENAI_API_KEY"
 
-Optionally one of:
+Optional:
+LLM Url, either:
     "FLASK_ORCHESTRATOR_URL"
-    "LLM_BASE_URL"
     "PIPETTE_LLM_BASE_URL"
+LLM Model:
+    "FLASK_ORCHESTRATOR_MODEL"
 
 Run with (default) --config llm-judge to skip dft, llm-judge-with-dft to use dft, or rules to use a rule based assesment instead of a final LLM judge
 

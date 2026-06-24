@@ -66,7 +66,6 @@ class TopLevelConfig:
 @dataclass
 class LLMJudgeConfig:
     allow_fail: Literal["all"] | list[str] = field(default_factory=list)
-    url: str = DEFAULT_LLM_BASE_URL
     model: str = "gpt-5.4"
     api_key: str | None = None
     prompt_path: Path = field(
@@ -90,9 +89,6 @@ class LLMJudgeConfig:
                 raise ValueError(
                     "llm_judge.allow_fail must be 'all' or a list of tool names."
                 )
-        url = resolve_llm_base_url(mapping.get("url"))
-        if not isinstance(url, str):
-            raise ValueError("llm_judge.url must be a string.")
 
         model = mapping.get("model", "gpt-5.4")
         if not isinstance(model, str):
@@ -111,7 +107,6 @@ class LLMJudgeConfig:
         )
         return cls(
             allow_fail=allow_fail if allow_fail == "all" else list(allow_fail),
-            url=url,
             model=model,
             api_key=api_key,
             prompt_path=prompt_path or package_config_path("judge-prompt.txt"),
@@ -123,6 +118,7 @@ class LLMJudgeConfig:
 class LLMReactionFixerConfig:
     enabled: bool = True
     model: str = "gpt-5.4"
+    reasoning_effort: str = "medium"
     api_key: str | None = None
     prompt_path: Path = field(
         default_factory=lambda: package_config_path("fixer-prompt.txt")

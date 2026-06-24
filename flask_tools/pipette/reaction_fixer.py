@@ -67,7 +67,7 @@ class BaseLLMReactionFixer:
 
         return cls(
             model=fixer_config.model,
-            url=config.llm_judge.url,
+            url=fixer_config.url,
             api_key=api_key,
             prompt_path=fixer_config.prompt_path,
             prompt=fixer_config.prompt,
