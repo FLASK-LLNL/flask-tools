@@ -6,7 +6,7 @@ from typing import Literal, TypeVar
 
 from pydantic import BaseModel
 
-from .config import PipetteConfig
+from .config import PipetteConfig, ReasoningEffort
 from .constants import (
     FinalGrade,
     LLM_API_KEY_ENV_VARS,
@@ -18,9 +18,7 @@ from .llm_query import query_task, query_task_async
 
 
 class ReactionGradeResponse(BaseModel):
-    final_grade: Literal[
-        "likely", "possible but unlikely", "impossible", "uncertain/cannot determine"
-    ]
+    final_grade: Literal["likely", "possible but unlikely", "impossible", "uncertain"]
     short_comment: str = "llm_judge"
     comment: str = ""
 
@@ -34,12 +32,14 @@ class BaseLLMJudge:
         *,
         url: str,
         model: str,
+        reasoning_effort: ReasoningEffort,
         api_key: str,
         prompt_path: Path,
         prompt: str | None = None,
     ) -> None:
         self.url = url
         self.model = model
+        self.reasoning_effort = reasoning_effort
         self.api_key = api_key
         self.prompt_path = prompt_path
         self._prompt = prompt
@@ -56,6 +56,7 @@ class BaseLLMJudge:
         return cls(
             url=config.llm_judge.url,
             model=config.llm_judge.model,
+            reasoning_effort=config.llm_judge.reasoning_effort,
             api_key=api_key,
             prompt_path=config.llm_judge.prompt_path,
             prompt=config.llm_judge.prompt,
@@ -130,6 +131,7 @@ class AsyncLLMJudge(BaseLLMJudge):
             model=self.model,
             api_key=self.api_key,
             url=self.url,
+            reasoning_effort=self.reasoning_effort,
             structured_output_schema=ReactionGradeResponse,
             agent_name="PipetteJudge",
         )
@@ -149,6 +151,7 @@ class LLMJudge(BaseLLMJudge):
             model=self.model,
             api_key=self.api_key,
             url=self.url,
+            reasoning_effort=self.reasoning_effort,
             structured_output_schema=ReactionGradeResponse,
             agent_name="PipetteJudge",
         )

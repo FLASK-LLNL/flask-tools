@@ -4,7 +4,7 @@ import pytest
 
 from flask_tools.pipette.verifiers import ReactionEnergyChecker
 from flask_tools.pipette.verifiers.base import ReactionChecker, CacheableReactionChecker
-from flask_tools.pipette.config import PipetteConfig, TopLevelConfig
+from flask_tools.pipette.config import PipetteConfig, PipelineConfig
 from flask_tools.pipette.constants import ToolResult, ToolStatus, ToolResultsDict
 from flask_tools.pipette.pipeline import (
     GradingPipeline,
@@ -62,7 +62,7 @@ def test_resolve_tool_list_rejects_unknown_and_duplicate_tools() -> None:
 def test_build_default_pipeline_uses_tool_list_order() -> None:
     # Check that tool call order respects tool_list
     config = PipetteConfig(
-        tool_list=["third", "first"], rules=TopLevelConfig(use_dft=False)
+        tool_list=["third", "first"], rules=PipelineConfig(use_dft=False)
     )
     pipeline = build_default_pipeline(
         config=config,

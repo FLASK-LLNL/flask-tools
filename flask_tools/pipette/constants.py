@@ -55,7 +55,7 @@ class FinalGrade(str, Enum):
     LIKELY = "likely"  # The reaction is valid and the product(s) are a likely outcome
     POSSIBLE = "possible but unlikely"  # The reaction is plausible but other products exist that would have significantly higher likelihood
     IMPOSSIBLE = "impossible"  # The reaction is physically or chemically impossible
-    UNCERTAIN = "uncertain/cannot determine"  #  With the given tools and knowledge, it is not possible to ascertain whether this reaction is possible or not. (Use this, e.g., when certain tools cannot run)
+    UNCERTAIN = "uncertain"  #  With the given tools and knowledge, it is not possible to ascertain whether this reaction is possible or not. (Use this, e.g., when certain tools cannot run, or the results are ambiguous)
 
 
 @dataclass

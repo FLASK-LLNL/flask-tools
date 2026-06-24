@@ -9,6 +9,8 @@ import yaml
 
 from .constants import DEFAULT_LLM_BASE_URL, resolve_llm_base_url
 
+ReasoningEffort = Literal["low", "medium", "high"]
+
 
 def package_data_path(filename: str) -> Path:
     return Path(__file__).with_name("data") / filename
@@ -39,7 +41,7 @@ def _resolve_optional_path(path_value: object, *, base_dir: Path) -> Path | None
 
 
 @dataclass
-class TopLevelConfig:
+class PipelineConfig:
     stop_on_hard_fail: bool = True
     mass_tolerance_atoms: int = 0
     reaction_energy_max_ev_mol: float = (
@@ -49,7 +51,7 @@ class TopLevelConfig:
 
     # All the from_mapping() is annoying, could this be better?
     @classmethod
-    def from_mapping(cls, data: object) -> TopLevelConfig:
+    def from_mapping(cls, data: object) -> PipelineConfig:
         mapping = _validate_mapping_format(data, name="settings")
         return cls(
             stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
@@ -64,14 +66,67 @@ class TopLevelConfig:
 
 
 @dataclass
-class LLMJudgeConfig:
-    allow_fail: Literal["all"] | list[str] = field(default_factory=list)
+class LLMConfig:
+    url: str = DEFAULT_LLM_BASE_URL
     model: str = "gpt-5.4"
+    reasoning_effort: ReasoningEffort = "medium"
     api_key: str | None = None
     prompt_path: Path = field(
         default_factory=lambda: package_config_path("judge-prompt.txt")
     )
     prompt: str | None = None
+
+    @classmethod
+    def _llm_kwargs_from_mapping(
+        cls,
+        mapping: dict[str, Any],
+        *,
+        name: str,
+        base_dir: Path,
+        default_prompt_filename: str,
+    ) -> dict[str, Any]:
+        url = mapping.get("url")
+        if url is not None and not isinstance(url, str):
+            raise ValueError(f"{name}.url must be a string when provided.")
+
+        model = mapping.get("model", cls.model)
+        if not isinstance(model, str):
+            raise ValueError(f"{name}.model must be a string.")
+
+        reasoning_effort = mapping.get("reasoning_effort", cls.reasoning_effort)
+        if reasoning_effort not in {"low", "medium", "high"}:
+            raise ValueError(
+                f"{name}.reasoning_effort must be 'low', 'medium', or 'high'."
+            )
+
+        api_key = mapping.get("api_key")
+        if api_key is not None and not isinstance(api_key, str):
+            raise ValueError(f"{name}.api_key must be a string when provided.")
+
+        prompt = mapping.get("prompt")
+        if prompt is not None and not isinstance(prompt, str):
+            raise ValueError(f"{name}.prompt must be a string when provided.")
+
+        prompt_path = _resolve_optional_path(
+            mapping.get("prompt_path"), base_dir=base_dir
+        )
+
+        return {
+            "url": resolve_llm_base_url(url),
+            "model": model,
+            "reasoning_effort": reasoning_effort,
+            "api_key": api_key,
+            "prompt_path": prompt_path or package_config_path(default_prompt_filename),
+            "prompt": prompt,
+        }
+
+
+@dataclass
+class LLMJudgeConfig(LLMConfig):
+    allow_fail: Literal["all"] | list[str] = field(default_factory=list)
+    prompt_path: Path = field(
+        default_factory=lambda: package_config_path("judge-prompt.txt")
+    )
 
     @classmethod
     def from_mapping(
@@ -89,41 +144,23 @@ class LLMJudgeConfig:
                 raise ValueError(
                     "llm_judge.allow_fail must be 'all' or a list of tool names."
                 )
-
-        model = mapping.get("model", "gpt-5.4")
-        if not isinstance(model, str):
-            raise ValueError("llm_judge.model must be a string.")
-
-        api_key = mapping.get("api_key")
-        if api_key is not None and not isinstance(api_key, str):
-            raise ValueError("llm_judge.api_key must be a string when provided.")
-
-        prompt = mapping.get("prompt")
-        if prompt is not None and not isinstance(prompt, str):
-            raise ValueError("llm_judge.prompt must be a string when provided.")
-
-        prompt_path = _resolve_optional_path(
-            mapping.get("prompt_path"), base_dir=base_dir
-        )
         return cls(
             allow_fail=allow_fail if allow_fail == "all" else list(allow_fail),
-            model=model,
-            api_key=api_key,
-            prompt_path=prompt_path or package_config_path("judge-prompt.txt"),
-            prompt=prompt,
+            **cls._llm_kwargs_from_mapping(
+                mapping,
+                name="llm_judge",
+                base_dir=base_dir,
+                default_prompt_filename="judge-prompt.txt",
+            ),
         )
 
 
 @dataclass
-class LLMReactionFixerConfig:
+class LLMReactionFixerConfig(LLMConfig):
     enabled: bool = True
-    model: str = "gpt-5.4"
-    reasoning_effort: Literal["low", "medium", "high"] = "medium"
-    api_key: str | None = None
     prompt_path: Path = field(
         default_factory=lambda: package_config_path("fixer-prompt.txt")
     )
-    prompt: str | None = None
 
     @classmethod
     def from_mapping(
@@ -137,39 +174,14 @@ class LLMReactionFixerConfig:
         if not isinstance(enabled, bool):
             raise ValueError("llm_reaction_fixer.enabled must be a boolean.")
 
-        model = mapping.get("model", cls.model)
-        if not isinstance(model, str):
-            raise ValueError("llm_reaction_fixer.model must be a string.")
-
-        reasoning_effort = mapping.get("reasoning_effort", cls.reasoning_effort)
-        if reasoning_effort not in {"low", "medium", "high"}:
-            raise ValueError(
-                "llm_reaction_fixer.reasoning_effort must be 'low', 'medium', or 'high'."
-            )
-
-        api_key = mapping.get("api_key")
-        if api_key is not None and not isinstance(api_key, str):
-            raise ValueError(
-                "llm_reaction_fixer.api_key must be a string when provided."
-            )
-
-        prompt = mapping.get("prompt")
-        if prompt is not None and not isinstance(prompt, str):
-            raise ValueError(
-                "llm_reaction_fixer.prompt must be a string when provided."
-            )
-
-        prompt_path = _resolve_optional_path(
-            mapping.get("prompt_path"), base_dir=base_dir
-        )
-
         return cls(
             enabled=enabled,
-            model=model,
-            reasoning_effort=reasoning_effort,
-            api_key=api_key,
-            prompt_path=prompt_path or package_config_path("fixer-prompt.txt"),
-            prompt=prompt,
+            **cls._llm_kwargs_from_mapping(
+                mapping,
+                name="llm_reaction_fixer",
+                base_dir=base_dir,
+                default_prompt_filename="fixer-prompt.txt",
+            ),
         )
 
 
@@ -218,7 +230,7 @@ class PipetteConfig:
     llm_reaction_fixer: LLMReactionFixerConfig = field(
         default_factory=LLMReactionFixerConfig
     )
-    rules: TopLevelConfig = field(default_factory=TopLevelConfig)
+    rules: PipelineConfig = field(default_factory=PipelineConfig)
     tools_settings: ToolsConfig = field(default_factory=ToolsConfig)
     solvent_catalog_path: Path = field(
         default_factory=lambda: package_data_path("solvents.tsv")
@@ -258,7 +270,7 @@ class PipetteConfig:
                 mapping.get("llm_reaction_fixer"),
                 base_dir=resolved_base_dir,
             ),
-            rules=TopLevelConfig.from_mapping(mapping.get("rules")),
+            rules=PipelineConfig.from_mapping(mapping.get("rules")),
             tools_settings=ToolsConfig.from_mapping(
                 mapping.get("tools_settings"),
                 base_dir=resolved_base_dir,

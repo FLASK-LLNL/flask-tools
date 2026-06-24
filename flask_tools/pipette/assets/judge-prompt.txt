@@ -21,7 +21,7 @@ Tool meanings:
 Judge the overall plausibility of the reaction using all provided tool outputs.
 Return exactly one JSON object with this schema:
 {
-  "final_grade": "likely|possible but unlikely|impossible|uncertain/cannot determine",
+  "final_grade": "likely|possible but unlikely|impossible|uncertain",
   "short_comment": "ai.<short_comment>",
   "comment": "brief explanation"
 }
