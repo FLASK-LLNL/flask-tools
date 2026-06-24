@@ -99,10 +99,10 @@ def main(
                 - final_grade: The reaction's grade. Possible values are todo
                 - short_comment: a short comment explaining the grade
                 - comment: a comment explaining the grade
-                - results: a list of results from sub tools. Each result is a dictionary. Important keys in these are:
+                - results: a list of results from sub tools. Each result is a dictionary. Important keys in the individual dictionaries are:
                     - name: the name of the tool
                     - status: The status. Possible values are:
-                        - todo
+                        - pass | fail | unknown | not_run | error
                     - comment: a short comment about the tool result
                     - data: a dictionary with extra information pertaining to that tool
 

@@ -121,7 +121,7 @@ class GradingPipeline:
             return False
         return (
             basic.status is ToolStatus.PASS
-            and exact_match.status is ToolStatus.UNKNOWN
+            and exact_match.status in (ToolStatus.UNKNOWN, ToolStatus.NOT_RUN)
             and charge.status is ToolStatus.PASS
             # if mass fails, or even if difference is likely a common solvent
             and mass.status == ToolStatus.FAIL

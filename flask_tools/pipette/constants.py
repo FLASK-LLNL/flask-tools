@@ -44,8 +44,8 @@ DEFAULT_LLM_BASE_URL = resolve_llm_base_url()
 
 
 class ToolStatus(str, Enum):
-    FAIL = "fail"  # Result indicating a rxn is invalid
-    PASS = "pass"  # Result indicating a rxn is definitely valid
+    PASS = "pass"  # Reaction passed this tool
+    FAIL = "fail"  # Reaction failed to pass this tool
     UNKNOWN = "unknown"  # Result was ambiguous
     NOT_RUN = "not_run"  # Tool was not called (skipped because of prior tool)
     ERROR = "error"  # Tool call errored out
