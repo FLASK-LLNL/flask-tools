@@ -118,7 +118,7 @@ class LLMJudgeConfig:
 class LLMReactionFixerConfig:
     enabled: bool = True
     model: str = "gpt-5.4"
-    reasoning_effort: str = "medium"
+    reasoning_effort: Literal["low", "medium", "high"] = "medium"
     api_key: str | None = None
     prompt_path: Path = field(
         default_factory=lambda: package_config_path("fixer-prompt.txt")
@@ -141,6 +141,12 @@ class LLMReactionFixerConfig:
         if not isinstance(model, str):
             raise ValueError("llm_reaction_fixer.model must be a string.")
 
+        reasoning_effort = mapping.get("reasoning_effort", cls.reasoning_effort)
+        if reasoning_effort not in {"low", "medium", "high"}:
+            raise ValueError(
+                "llm_reaction_fixer.reasoning_effort must be 'low', 'medium', or 'high'."
+            )
+
         api_key = mapping.get("api_key")
         if api_key is not None and not isinstance(api_key, str):
             raise ValueError(
@@ -160,6 +166,7 @@ class LLMReactionFixerConfig:
         return cls(
             enabled=enabled,
             model=model,
+            reasoning_effort=reasoning_effort,
             api_key=api_key,
             prompt_path=prompt_path or package_config_path("fixer-prompt.txt"),
             prompt=prompt,

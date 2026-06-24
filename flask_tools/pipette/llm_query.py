@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import threading
-from typing import TYPE_CHECKING, Awaitable
+from typing import TYPE_CHECKING, Awaitable, Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from charge.clients.agentframework import AgentFrameworkBackend
@@ -47,6 +47,7 @@ def _backend_matches(
     model: str | None,
     backend_name: str,
     url: str | None,
+    reasoning_effort: Literal["low", "medium", "high"],
 ) -> bool:
     if backend is None:
         return False
@@ -54,6 +55,7 @@ def _backend_matches(
         backend.model == model
         and backend.backend == backend_name
         and backend.base_url == url
+        and backend.reasoning_effort == reasoning_effort
     )
 
 
@@ -62,6 +64,7 @@ def set_agent_backend(
     api_key: str | None = None,
     backend: str = "livai",
     url: str | None = None,
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
 ) -> None:
     global BACKEND
     resolved_api_key = os.getenv("FLASK_ORCHESTRATOR_API_KEY", api_key)
@@ -75,6 +78,7 @@ def set_agent_backend(
         api_key=resolved_api_key,
         base_url=resolved_url,
         use_responses_api=True,
+        reasoning_effort=reasoning_effort,
     )
 
 
@@ -83,6 +87,7 @@ def get_agentframework_backend(
     api_key: str | None = None,
     backend: str = "livai",
     url: str | None = None,
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
 ) -> AgentFrameworkBackend:
     resolved_model = os.getenv("FLASK_ORCHESTRATOR_MODEL", model)
     resolved_backend = os.getenv("FLASK_ORCHESTRATOR_BACKEND", backend)
@@ -93,8 +98,15 @@ def get_agentframework_backend(
         model=resolved_model,
         backend_name=resolved_backend,
         url=resolved_url,
+        reasoning_effort=reasoning_effort,
     ):
-        set_agent_backend(model=model, api_key=api_key, backend=backend, url=url)
+        set_agent_backend(
+            model=model,
+            api_key=api_key,
+            backend=backend,
+            url=url,
+            reasoning_effort=reasoning_effort,
+        )
     return BACKEND  # noqa
 
 
@@ -105,6 +117,7 @@ async def query_task_async(
     model: str,
     api_key: str,
     url: str | None = None,
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
     structured_output_schema: type[BaseModel] | None = None,
     agent_name: str = "Pipette",
     max_retries: int = 1,
@@ -119,6 +132,7 @@ async def query_task_async(
         model=model,
         api_key=api_key,
         url=url,
+        reasoning_effort=reasoning_effort,
     )
 
     agent: AgentFrameworkAgent = backend.create_agent(
@@ -162,6 +176,7 @@ def query_task(
     model: str,
     api_key: str,
     url: str | None = None,
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
     structured_output_schema: type[BaseModel] | None = None,
     agent_name: str = "Pipette",
     max_retries: int = 1,
@@ -174,6 +189,7 @@ def query_task(
             model=model,
             api_key=api_key,
             url=url,
+            reasoning_effort=reasoning_effort,
             structured_output_schema=structured_output_schema,
             agent_name=agent_name,
             max_retries=max_retries,

@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -45,6 +45,7 @@ class BaseLLMReactionFixer:
         *,
         model: str,
         url: str,
+        reasoning_effort: Literal["low", "medium", "high"],
         api_key: str,
         prompt_path: Path,
         prompt: str | None = None,
@@ -52,6 +53,7 @@ class BaseLLMReactionFixer:
         self.model = model
         self.api_key = api_key
         self.url = url
+        self.reasoning_effort = reasoning_effort
         self.prompt_path = prompt_path
         self._prompt = prompt
 
@@ -68,6 +70,7 @@ class BaseLLMReactionFixer:
         return cls(
             model=fixer_config.model,
             url=fixer_config.url,
+            reasoning_effort=fixer_config.reasoning_effort,
             api_key=api_key,
             prompt_path=fixer_config.prompt_path,
             prompt=fixer_config.prompt,
@@ -172,6 +175,7 @@ class LLMReactionFixer(BaseLLMReactionFixer):
             model=self.model,
             api_key=self.api_key,
             url=self.url,
+            reasoning_effort=self.reasoning_effort,
             structured_output_schema=ReactionFixResponse,
             agent_name="PipetteFixer",
         )
@@ -200,6 +204,7 @@ class AsyncLLMReactionFixer(BaseLLMReactionFixer):
             model=self.model,
             api_key=self.api_key,
             url=self.url,
+            reasoning_effort=self.reasoning_effort,
             structured_output_schema=ReactionFixResponse,
             agent_name="PipetteFixer",
         )
