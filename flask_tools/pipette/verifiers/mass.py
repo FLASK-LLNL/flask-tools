@@ -9,7 +9,14 @@ from rdkit.Chem import MolToSmiles, MolFromInchi
 
 from .base import ReactionChecker
 from ..config import PipetteConfig
-from ..constants import FinalGrade, ToolResult, ToolStatus, MissingProductRule
+from ..constants import (
+    ToolResult,
+    ToolStatus,
+    AllowedUnbalancedMolecule,
+    Confidence,
+    RxnSide,
+    ReactionMassImbalanceExplanation,
+)
 from ..smiles import parse_reaction_smi
 
 
@@ -70,48 +77,49 @@ def check_mass_conservation(
     return True, "Reaction is mass-conserved."
 
 
-def find_basic_missing(delta: dict[str, int]) -> list[dict[str, object]]:
+def find_basic_missing(delta: dict[str, int]) -> list[ReactionMassImbalanceExplanation]:
     """Basic exceptions like missing hydrogens."""
-    matches: list[dict[str, object]] = []
+    matches: list[ReactionMassImbalanceExplanation] = []
     if len(delta) == 1 and "H" in delta:
         matches.append(
-            {
-                "name": "hydrogen",
-                "missing_side": "products" if delta["H"] > 0 else "reactants",
-                "mass_amu": round(abs(delta["H"]) * 1.00794, 4),
-                "confidence": "high",
-            }
+            ReactionMassImbalanceExplanation(
+                name="hydrogen",
+                smiles="H",
+                missing_side=RxnSide.PRODUCTS if delta["H"] > 0 else RxnSide.REACTANTS,
+                mass_amu=round(abs(delta["H"]) * 1.00794, 4),
+                confidence=Confidence.HIGH,
+            )
         )
     return matches
 
 
 def find_missing_product_matches(
     delta: dict[str, int],
-    rules: list[MissingProductRule],
-) -> list[dict[str, object]]:
-    matches: list[dict[str, object]] = []
+    rules: list[AllowedUnbalancedMolecule],
+) -> list[ReactionMassImbalanceExplanation]:
+    matches: list[ReactionMassImbalanceExplanation] = []
     for rule in rules:
         negative_formula = {element: -count for element, count in rule.formula.items()}
         if delta == negative_formula:
-            missing_side = "products"
+            missing_side = RxnSide.PRODUCTS
         elif delta == rule.formula:
-            missing_side = "reactants"
+            missing_side = RxnSide.REACTANTS
         else:
             continue
         matches.append(
-            {
-                "name": rule.name,
-                "smiles": rule.smiles,
-                "confidence": rule.confidence,
-                "missing_side": missing_side,
-                "mass_amu": round(formula_mass(rule.formula), 4),
-            }
+            ReactionMassImbalanceExplanation(
+                name=rule.name,
+                smiles=rule.smiles,
+                confidence=rule.confidence,
+                missing_side=missing_side,
+                mass_amu=round(formula_mass(rule.formula), 4),
+            )
         )
     return matches
 
 
-def load_solvent_rules(solvents_path: Path) -> list[MissingProductRule]:
-    rules: list[MissingProductRule] = []
+def load_solvent_rules(solvents_path: Path) -> list[AllowedUnbalancedMolecule]:
+    rules: list[AllowedUnbalancedMolecule] = []
 
     with solvents_path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
@@ -119,12 +127,17 @@ def load_solvent_rules(solvents_path: Path) -> list[MissingProductRule]:
             inchi = (row.get("inchi") or "").strip()
             smiles = MolToSmiles(MolFromInchi(inchi))
             name = (row.get("common_name") or "").strip()
-            commonness = (row.get("commonness") or "").strip().lower() or "low"
+            try:
+                commonness = Confidence(
+                    (row.get("commonness") or "").strip().lower() or "low"
+                )
+            except ValueError as e:
+                print(f"Confidence must be one of {list(Confidence)}")
             if not smiles or not name:
                 continue
 
             rules.append(
-                MissingProductRule(
+                AllowedUnbalancedMolecule(
                     name=name,
                     smiles=smiles,
                     formula=formula_from_smiles(smiles),

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass, field, is_dataclass, asdict
-from enum import Enum
+from enum import Enum, StrEnum
 import json
 import os
 from typing import Any
@@ -116,15 +117,35 @@ class ReactionGrade:
         return "\n".join(lines)
 
 
+Smi = str
+CheckerName = str
+ToolResultsDict = dict[tuple[Smi, CheckerName], ToolResult]
+
+
+class Confidence(StrEnum):
+    HIGH = "high"
+    MED = "medium"
+    LOW = "low"
+
+
+class RxnSide(StrEnum):
+    REACTANTS = "reactants"
+    PRODUCTS = "products"
+
+
 @dataclass(frozen=True)
-class MissingProductRule:
+class AllowedUnbalancedMolecule:
     # A molecule that is commonly missing from one side of a rxn. For example, a solvent may be on the left hand side.
     name: str
     smiles: str
     formula: dict[str, int]
-    confidence: str
+    confidence: Confidence
 
 
-Smi = str
-CheckerName = str
-ToolResultsDict = dict[tuple[Smi, CheckerName], ToolResult]
+@dataclass
+class ReactionMassImbalanceExplanation:
+    name: str
+    smiles: str
+    missing_side: RxnSide
+    mass_amu: float
+    confidence: Confidence
