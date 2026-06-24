@@ -8,7 +8,13 @@
 from __future__ import annotations
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
+from ..constants import (
+    FinalGrade,
+    ToolResult,
+    ToolStatus,
+    ToolResultsDict,
+    ToolResultDetails,
+)
 from ..smiles import parse_reaction_smi
 
 
@@ -17,7 +23,25 @@ def validate_smiles(rxn_smiles: str) -> bool:
     return True
 
 
+class SmilesValidationResultDetails(ToolResultDetails):
+    reactant_count: int
+    product_count: int
+
+
 class BasicSmilesValidationChecker(ReactionChecker):
+    """Checks if reaction SMILES is valid
+    ToolResult example:
+        ToolResult(
+            name="basic_smiles_validation",
+            status=ToolStatus.PASS,
+            data=SmilesValidationResultDetails(
+                reactant_count = len(reactants),
+                product_count = len(products),
+            ),
+            comment="Reaction SMILES parsed successfully.",
+        )
+    """
+
     name = "basic_smiles_validation"
     stops_on_fail = True
 
@@ -42,9 +66,9 @@ class BasicSmilesValidationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS,
-            data={
-                "reactant_count": len(reactants),
-                "product_count": len(products),
-            },
+            data=SmilesValidationResultDetails(
+                reactant_count=len(reactants),
+                product_count=len(products),
+            ),
             comment="Reaction SMILES parsed successfully.",
         )

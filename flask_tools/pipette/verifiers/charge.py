@@ -7,9 +7,10 @@
 
 from __future__ import annotations
 
+import rdkit.Chem
+
 from .base import ReactionChecker
 from ..constants import (
-    FinalGrade,
     ToolResult,
     ToolStatus,
     ToolResultsDict,
@@ -18,7 +19,7 @@ from ..constants import (
 from ..smiles import parse_reaction_smi
 
 
-def total_charge(molecules: list[object]) -> int:
+def total_charge(molecules: list[rdkit.Chem.Mol]) -> int:
     charge = 0
     for molecule in molecules:
         for atom in molecule.GetAtoms():
@@ -48,7 +49,15 @@ class ChargeResultDetails(ToolResultDetails):
 
 
 class ChargeConservationChecker(ReactionChecker):
-    """Checks of charge is balanced across for A and B for A>>B or A>C>B"""
+    """Checks of charge is balanced across for A and B for A>>B or A>C>B
+    ToolResult example:
+            ToolResult(
+                name="charge_conservation",
+                status=ToolStatus.FAIL,
+                data=ChargeResultDetails(charge_difference=1),
+                comment=f"Charge is not conserved. Product minus reactant charge: 1.",
+            )
+    """
 
     name = "charge_conservation"
     stops_on_fail = True
@@ -60,6 +69,7 @@ class ChargeConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.ERROR,
+                data=None,
                 comment=f"Charge conservation could not be evaluated: {exc}",
             )
 

@@ -94,17 +94,14 @@ tool_results:
     {
       "mass_difference_amu": 0.0,
       "element_difference": {},
-      "possible_missing_products": [],
-      "missing_product_confidence": null,
+      "imbalanced_molecules": [],
+      "imbalanced_molecule_confidence": null,
       "closest_stoich": null
     }
 ```
 
 #### With DFT Reaction Energy Set up
-Not fully implemented
-
-Todo: config details (how to specify DFT runner if necessary)
-
+Not implemented
 
 ## Reaction Fixing
 Unbalanced reactions can be fixed by adding missing byproducts or reactants. This is a default part of the pipeline
@@ -193,8 +190,8 @@ Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
           "data": {
             "mass_difference_amu": 0.0,
             "element_difference": {},
-            "possible_missing_products": [],
-            "missing_product_confidence": null,
+            "imbalanced_molecules": [],
+            "imbalanced_molecule_confidence": null,
             "closest_stoich": null
           },
           "comment": "Element counts are conserved.",

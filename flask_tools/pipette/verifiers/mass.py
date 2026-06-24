@@ -93,7 +93,7 @@ def find_basic_missing(delta: dict[str, int]) -> list[ReactionMassImbalanceExpla
             ReactionMassImbalanceExplanation(
                 name="hydrogen",
                 smiles="H",
-                missing_side=RxnSide.PRODUCTS if delta["H"] > 0 else RxnSide.REACTANTS,
+                missing_side=RxnSide.PRODUCTS if delta["H"] < 0 else RxnSide.REACTANTS,
                 mass_amu=round(abs(delta["H"]) * 1.00794, 4),
                 confidence=Confidence.HIGH,
             )
@@ -158,28 +158,35 @@ def load_solvent_rules(solvents_path: Path) -> list[AllowedUnbalancedMolecule]:
 class MassResultDetails(ToolResultDetails):
     mass_difference_amu: float  # Product mass - reactant mass
     element_difference: dict[str, int]  # Product elements - reactant elements
-    possible_missing_products: list[
+    imbalanced_molecules: list[
         ReactionMassImbalanceExplanation
-    ]  # Common molecules that fit the difference
-    missing_product_confidence: (
+    ]  # Molecules that cause or could fit the difference
+    imbalanced_molecule_confidence: (
         Confidence | None
-    )  # None if balanced, otherwise higher confidence for more commonly missing molecules
+    )  # None if balanced, otherwise the confidence that a reaction is ok based on the imbalanced molecule. IE, if the imbalance is a common solvent, or a small byproduct, we can likely ignore it, so the confidence is high.
 
 
 class MassConservationChecker(ReactionChecker):
     """Checks the reactants and products have equal mass. Certain mass differences are allowed if it corresponds
     with common solvents or a missing H
-    ToolResult example :
+    ToolResult example:
         ToolResult(
             name="mass_conservation",
             status=ToolStatus.PASS,
-            data={  # todo the return details for mass...
-                "mass_difference_amu": 0.0,
-                "element_difference": {},
-                "possible_missing_products": [],
-                "missing_product_confidence": None,
-                "closest_stoich": None,
-            },
+            data=MassResultDetails(
+                mass_difference_amu: 1.00794,
+                element_difference={"H": -1},
+                imbalanced_molecules=[
+                    ReactionMassImbalanceExplanation(
+                        name="hydrogen",
+                        smiles="H",
+                        missing_side="product",
+                        mass_amu=1.00794,
+                        confidence=Confidence.HIGH,
+                    )
+                ],
+                imbalanced_molecule_confidence=Confidence.HIGH,
+            )
             comment="Element counts are conserved.",
         )
     """
@@ -210,8 +217,8 @@ class MassConservationChecker(ReactionChecker):
                 data=MassResultDetails(
                     mass_difference_amu=0.0,
                     element_difference={},
-                    possible_missing_products=[],
-                    missing_product_confidence=None,
+                    imbalanced_molecules=[],
+                    imbalanced_molecule_confidence=None,
                 ),
                 comment="Element counts are conserved.",
             )
@@ -227,8 +234,8 @@ class MassConservationChecker(ReactionChecker):
                 data=MassResultDetails(
                     mass_difference_amu=best_match.mass_amu,
                     element_difference=delta,
-                    possible_missing_products=matches,
-                    missing_product_confidence=best_match.confidence,
+                    imbalanced_molecules=matches,
+                    imbalanced_molecule_confidence=best_match.confidence,
                 ),
                 comment=(
                     "Element counts are not conserved, but the difference matches a "
@@ -248,8 +255,8 @@ class MassConservationChecker(ReactionChecker):
             data=MassResultDetails(
                 mass_difference_amu=mass_difference,
                 element_difference=delta,
-                possible_missing_products=[],
-                missing_product_confidence=None,
+                imbalanced_molecules=[],
+                imbalanced_molecule_confidence=None,
             ),
             comment="Element counts are not conserved and do not match a configured common omission.",
         )

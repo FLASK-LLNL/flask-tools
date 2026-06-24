@@ -142,13 +142,14 @@ class AllowedUnbalancedMolecule(BaseModel):
     # A molecule that is commonly missing from one side of a rxn. For example, a solvent may be on the left hand side.
     name: str
     smiles: str
-    formula: dict[str, int]
+    formula: dict[str, int]  # Dict where keys are elements and values are counts
     confidence: Confidence
 
 
 class ReactionMassImbalanceExplanation(BaseModel):
+    # Corresponds to an AllowedUnbalancedMolecule in a reaction
     name: str
     smiles: str
-    missing_side: RxnSide
+    missing_side: RxnSide  # Which side does is missing this mass
     mass_amu: float
     confidence: Confidence

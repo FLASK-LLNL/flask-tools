@@ -103,7 +103,7 @@ def main(
             - rxn_smiles: the smiles of the reaction
             - cleaned_rxn_smiles: rxn_smiles after balancing, which may or may not be different
             - grade: a dictionary of the final grade. The keys are:
-                - final_grade: The reaction's grade. Possible values are todo
+                - final_grade: The reaction's grade. Possible values are `likely`|`possible but unlikely`|`impossible`|`uncertain`
                 - short_comment: a short comment explaining the grade
                 - comment: a comment explaining the grade
                 - results: a list of results from sub tools. Each result is a dictionary. Important keys in the individual dictionaries are:
@@ -186,8 +186,8 @@ def main(
               "data": {
                 "mass_difference_amu": 0.0,
                 "element_difference": {},
-                "possible_missing_products": [],
-                "missing_product_confidence": null,
+                "imbalanced_molecules": [],
+                "imbalanced_molecule_confidence": null,
                 "closest_stoich": null
               },
               "comment": "Element counts are conserved.",
