@@ -8,7 +8,13 @@
 from __future__ import annotations
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
+from ..constants import (
+    FinalGrade,
+    ToolResult,
+    ToolStatus,
+    ToolResultsDict,
+    ToolResultDetails,
+)
 from ..smiles import parse_reaction_smi
 
 
@@ -37,6 +43,10 @@ def check_charge_conservation(rxn_smiles: str) -> tuple[bool, str]:
     return True, "Reaction is charge-conserved."
 
 
+class ChargeResultDetails(ToolResultDetails):
+    charge_difference: int
+
+
 class ChargeConservationChecker(ReactionChecker):
     """Checks of charge is balanced across for A and B for A>>B or A>C>B"""
 
@@ -57,13 +67,13 @@ class ChargeConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.FAIL,
-                data={"charge_difference": diff},
+                data=ChargeResultDetails(charge_difference=diff),
                 comment=f"Charge is not conserved. Product minus reactant charge: {diff}.",
             )
 
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS,
-            data={"charge_difference": 0},
+            data=ChargeResultDetails(charge_difference=diff),
             comment="Charge is conserved.",
         )

@@ -19,7 +19,7 @@ from flask_tools.pipette.constants import (
     ToolResult,
     ToolResultsDict,
 )
-from flask_tools.pipette.reaction_fixer import ReactionFix
+from flask_tools.pipette.reaction_fixer import ReactionFixResultDetails
 from flask_tools.pipette.verifiers import ReactionChecker
 
 
@@ -47,11 +47,13 @@ def disable_dft_for_default_test_configs(monkeypatch) -> None:
 
 
 class RecordingReactionFixer:
-    def __init__(self, fix: ReactionFix) -> None:
+    def __init__(self, fix: ReactionFixResultDetails) -> None:
         self.fix_result = fix
         self.calls: list[tuple[str, list[ToolResult]]] = []
 
-    def fix(self, rxn_smiles: str, results: list[ToolResult]) -> ReactionFix:
+    def fix(
+        self, rxn_smiles: str, results: list[ToolResult]
+    ) -> ReactionFixResultDetails:
         self.calls.append((rxn_smiles, list(results)))
         return self.fix_result
 
@@ -101,10 +103,12 @@ class SpyChecker(ReactionChecker):
 @pytest.fixture
 def install_mock_llm_services(monkeypatch):
     def _install(
-        *, fix: ReactionFix = None, final_grade: FinalGrade = FinalGrade.POSSIBLE
+        *,
+        fix: ReactionFixResultDetails = None,
+        final_grade: FinalGrade = FinalGrade.POSSIBLE,
     ):
         if fix is None:
-            fix = ReactionFix(
+            fix = ReactionFixResultDetails(
                 fixed_reaction_smiles="CCO.O>>CC.O",
                 added_reactants=[],
                 added_products=[],

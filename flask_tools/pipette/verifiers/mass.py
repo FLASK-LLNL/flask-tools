@@ -23,6 +23,7 @@ from ..constants import (
     Confidence,
     RxnSide,
     ReactionMassImbalanceExplanation,
+    ToolResultDetails,
 )
 from ..smiles import parse_reaction_smi
 
@@ -135,11 +136,10 @@ def load_solvent_rules(solvents_path: Path) -> list[AllowedUnbalancedMolecule]:
             smiles = MolToSmiles(MolFromInchi(inchi))
             name = (row.get("common_name") or "").strip()
             try:
-                commonness = Confidence(
-                    (row.get("commonness") or "").strip().lower() or "low"
-                )
+                conf = (row.get("commonness") or "").strip().lower() or "low"
+                confidence = Confidence(conf)
             except ValueError as e:
-                print(f"Confidence must be one of {list(Confidence)}")
+                print(f"Confidence was {conf} must be one of {list(Confidence)}")
             if not smiles or not name:
                 continue
 
@@ -148,11 +148,22 @@ def load_solvent_rules(solvents_path: Path) -> list[AllowedUnbalancedMolecule]:
                     name=name,
                     smiles=smiles,
                     formula=formula_from_smiles(smiles),
-                    confidence=commonness,
+                    confidence=confidence,
                 )
             )
 
     return rules
+
+
+class MassResultDetails(ToolResultDetails):
+    mass_difference_amu: float  # Product mass - reactant mass
+    element_difference: dict[str, int]  # Product elements - reactant elements
+    possible_missing_products: list[
+        ReactionMassImbalanceExplanation
+    ]  # Common molecules that fit the difference
+    missing_product_confidence: (
+        Confidence | None
+    )  # None if balanced, otherwise higher confidence for more commonly missing molecules
 
 
 class MassConservationChecker(ReactionChecker):
@@ -162,7 +173,7 @@ class MassConservationChecker(ReactionChecker):
         ToolResult(
             name="mass_conservation",
             status=ToolStatus.PASS,
-            data={
+            data={  # todo the return details for mass...
                 "mass_difference_amu": 0.0,
                 "element_difference": {},
                 "possible_missing_products": [],
@@ -188,6 +199,7 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.ERROR,
+                data=None,
                 comment=f"Mass conservation could not be evaluated: {exc}",
             )
 
@@ -195,13 +207,12 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                data={
-                    "mass_difference_amu": 0.0,
-                    "element_difference": {},
-                    "possible_missing_products": [],
-                    "missing_product_confidence": None,
-                    "closest_stoich": None,
-                },
+                data=MassResultDetails(
+                    mass_difference_amu=0.0,
+                    element_difference={},
+                    possible_missing_products=[],
+                    missing_product_confidence=None,
+                ),
                 comment="Element counts are conserved.",
             )
 
@@ -213,16 +224,15 @@ class MassConservationChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                data={
-                    "mass_difference_amu": best_match["mass_amu"],
-                    "element_difference": delta,
-                    "possible_missing_products": matches,
-                    "missing_product_confidence": best_match["confidence"],
-                    "closest_stoich": None,
-                },
+                data=MassResultDetails(
+                    mass_difference_amu=best_match.mass_amu,
+                    element_difference=delta,
+                    possible_missing_products=matches,
+                    missing_product_confidence=best_match.confidence,
+                ),
                 comment=(
                     "Element counts are not conserved, but the difference matches a "
-                    f"common omitted species or solvent: {best_match['name']}."
+                    f"common omitted species or solvent: {best_match.name}."
                 ),
             )
 
@@ -235,12 +245,11 @@ class MassConservationChecker(ReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.FAIL,
-            data={
-                "mass_difference_amu": mass_difference,
-                "element_difference": delta,
-                "possible_missing_products": [],
-                "missing_product_confidence": None,
-                "closest_stoich": None,
-            },
+            data=MassResultDetails(
+                mass_difference_amu=mass_difference,
+                element_difference=delta,
+                possible_missing_products=[],
+                missing_product_confidence=None,
+            ),
             comment="Element counts are not conserved and do not match a configured common omission.",
         )

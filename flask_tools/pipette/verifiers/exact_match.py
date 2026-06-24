@@ -11,7 +11,13 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from .base import ReactionChecker
-from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
+from ..constants import (
+    FinalGrade,
+    ToolResult,
+    ToolStatus,
+    ToolResultsDict,
+    ToolResultDetails,
+)
 from ..smiles import canonicalize_reaction_smiles
 
 
@@ -29,6 +35,12 @@ class ReactionDatabase(Protocol):
     ) -> DatabaseMatch | None: ...
 
 
+class ExactResultDetails(ToolResultDetails):
+    source: str  # Name of the database
+    record_id: str | int | None  # Id within the database
+    matched_without_agents: bool  # True if only matched after removing agents. False if there were no agents to begin with
+
+
 class ExactMatchChecker(ReactionChecker):
     """Check if a rxn exists in the database. For rxns with reagents separated (A>C>B), will check without
     the reagent if it cannot find a match with them.
@@ -36,13 +48,11 @@ class ExactMatchChecker(ReactionChecker):
         ToolResult(
             name="exact_match",
             status=ToolStatus.PASS,
-            data={
-                "found": {
-                    "source": match.source,
-                    "record_id": match.record_id,
-                    "matched_without_agents": False,
-                }
-            },
+            data=ExactResultDetails(
+                source = match.source,
+                record_id = match.record_id,
+                matched_without_agents = False,
+            )
             comment="Found an exact reaction match in the configured database.",
         )
     """
@@ -57,6 +67,7 @@ class ExactMatchChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.NOT_RUN,
+                data=None,
                 comment="No reaction database backend is configured.",
             )
 
@@ -66,13 +77,11 @@ class ExactMatchChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                data={
-                    "found": {
-                        "source": match.source,
-                        "record_id": match.record_id,
-                        "matched_without_agents": False,
-                    }
-                },
+                data=ExactResultDetails(
+                    source=match.source,
+                    record_id=match.record_id,
+                    matched_without_agents=False,
+                ),
                 comment="Found an exact reaction match in the configured database.",
             )
 
@@ -82,19 +91,17 @@ class ExactMatchChecker(ReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.PASS,
-                data={
-                    "found": {
-                        "source": match.source,
-                        "record_id": match.record_id,
-                        "matched_without_agents": True,
-                    }
-                },
+                data=ExactResultDetails(
+                    source=match.source,
+                    record_id=match.record_id,
+                    matched_without_agents=True,
+                ),
                 comment="Found an exact reaction match after dropping agents.",
             )
 
         return ToolResult(
             name=self.name,
             status=ToolStatus.UNKNOWN,
-            data={"found": None},
+            data=None,
             comment="No exact reaction match was found.",
         )

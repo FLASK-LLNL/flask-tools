@@ -11,11 +11,17 @@ import csv
 from dataclasses import dataclass
 from pathlib import Path
 import time
-from typing import Protocol, Iterable
+from typing import Protocol, Iterable, TypedDict
 
 from .base import CacheableReactionChecker
 from ..config import PipetteConfig
-from ..constants import FinalGrade, ToolResult, ToolStatus, ToolResultsDict
+from ..constants import (
+    FinalGrade,
+    ToolResult,
+    ToolStatus,
+    ToolResultsDict,
+    ToolResultDetails,
+)
 from ..smiles import (
     split_reaction_smiles,
     smiles_to_inchi,
@@ -25,6 +31,7 @@ from ..smiles import (
 )
 
 
+# Not exposing to users, keeping as a dataclass?
 @dataclass
 class MoleculeEnergyRecord:
     smi: str
@@ -32,11 +39,16 @@ class MoleculeEnergyRecord:
     source: str
 
 
+class ReactionEnergyMetaDict(TypedDict):
+    reactants: dict[str, float]
+    products: dict[str, float]
+
+
 @dataclass
 class ReactionEnergyRecord:
     energy_difference_ev_mol: float
     source: dict[str, str]
-    metadata: dict[str, object]
+    metadata: ReactionEnergyMetaDict
 
 
 class DFTExecutor(Protocol):
@@ -138,6 +150,12 @@ class MoleculeEnergyStore:
             )
 
 
+class ReactionEnergyResultDetails(ToolResultDetails):
+    energy_difference_ev_mol: float  # products energy - reactants energy in eV
+    source: str  # Name of source, i.e. database or method
+    metadata: ReactionEnergyMetaDict  # A dictionary of energy per molecule for both reactants and products. E.g.: {"reactants": {"smi1": 0.123, ...} "products": ...}
+
+
 class ReactionEnergyChecker(CacheableReactionChecker):
     """Checks if reaction energy is favorable, looking at difference between the product molecules' energy and the
     reactants'. Threshold is set by the config value `reaction_energy_max_ev_mol` with a default of 0.2eV to include
@@ -149,11 +167,11 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         ToolResult(
             name=self.name,
             status=ToolStatus.PASS if passed else ToolStatus.FAIL,
-            data={
-                "energy_difference_ev_mol": record.energy_difference_ev_mol,
-                "source": record.source,  # dft or database name
-                "metadata": record.metadata,  # additional dict of metadata
-            },
+            data=ReactionEnergyResultDetails(
+                energy_difference_ev_mol = 0.123
+                source = record.source,  # dft or database name
+                metadata = {"reactants": {"smi1": 0.123, ...} "products": ...}
+            )
             comment=(
                 "Reaction energy is within the allowed threshold."
                 if passed
@@ -194,7 +212,7 @@ class ReactionEnergyChecker(CacheableReactionChecker):
             return ToolResult(
                 name=self.name,
                 status=ToolStatus.UNKNOWN,
-                data={"energy_difference_ev_mol": None},
+                data=None,
                 comment="no cached reaction energy was found and no dft fallback was run.",
             )
 
@@ -205,11 +223,11 @@ class ReactionEnergyChecker(CacheableReactionChecker):
         return ToolResult(
             name=self.name,
             status=ToolStatus.PASS if passed else ToolStatus.FAIL,
-            data={
-                "energy_difference_ev_mol": record.energy_difference_ev_mol,
-                "source": record.source,
-                "metadata": record.metadata,
-            },
+            data=ReactionEnergyResultDetails(
+                energy_difference_ev_mol=record.energy_difference_ev_mol,
+                source=record.source,
+                metadata=record.metadata,
+            ),
             comment=(
                 "Reaction energy is within the allowed threshold."
                 if passed

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Literal, TypeVar, Any
+from typing import TypeVar, Any
 
 from pydantic import BaseModel
 
@@ -75,22 +75,24 @@ class BaseLLMJudge:
             return self._prompt
         return self.prompt_path.read_text(encoding="utf-8")
 
+    @staticmethod
     def _build_user_payload(
-        self, rxn_smiles: str, results: list[ToolResult]
+        rxn_smiles: str, results: list[ToolResult]
     ) -> dict[str, Any]:
         serialized_results: list[dict[str, object]] = [
-            r.to_json_dict() for r in results
+            r.model_dump(exclude_none=True) for r in results
         ]
         for s in serialized_results:
-            del s["skipped_reason"]
+            if "skipped_reason" in s:
+                del s["skipped_reason"]
         user_payload = {
             "reaction_smiles": rxn_smiles,
             "tool_results": serialized_results,
         }
         return user_payload
 
+    @staticmethod
     def _parse_reaction_grade(
-        self,
         response_text: str,
         results: list[ToolResult],
     ) -> ReactionGrade:

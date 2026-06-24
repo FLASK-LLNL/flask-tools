@@ -26,6 +26,7 @@ class ReactionChecker(ABC):
             name=self.name,
             status=ToolStatus.NOT_RUN,
             comment="Tool was not run.",
+            data=None,
             skipped_reason=reason,
         )
 
@@ -33,8 +34,9 @@ class ReactionChecker(ABC):
         return ToolResult(
             name=self.name,
             status=ToolStatus.ERROR,
-            data={"traceback": traceback_text} if traceback_text else {},
+            data=None,
             comment=reason,
+            skipped_reason=traceback_text,  # This field should be deleted before making LLM prompts
         )
 
 

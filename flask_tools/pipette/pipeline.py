@@ -22,7 +22,7 @@ from .verifiers import (
 from .verifiers.base import CacheableReactionChecker
 from .judge import AsyncLLMJudge
 from .constants import ReactionGrade, ToolResult, ToolStatus, ToolResultsDict
-from .reaction_fixer import AsyncLLMReactionFixer, ReactionFix
+from .reaction_fixer import AsyncLLMReactionFixer, ReactionFixResultDetails
 from .smiles import canonicalize_reaction_smiles
 from .llm_query import _run_coroutine_sync
 
@@ -151,19 +151,12 @@ class GradingPipeline:
         )
 
     @staticmethod
-    def _build_fix_result(rxn_smiles: str, fix: ReactionFix) -> ToolResult:
+    def _build_fix_result(fix: ReactionFixResultDetails) -> ToolResult:
         return ToolResult(
             name="llm_reaction_fix",
             status=ToolStatus.PASS,
-            data={
-                "original_reaction_smiles": rxn_smiles,
-                "fixed_reaction_smiles": fix.fixed_reaction_smiles,
-                "removed_agents": fix.removed_agents,
-                "added_reactants": fix.added_reactants,
-                "added_products": fix.added_products,
-            },
-            comment=fix.reasoning_summary
-            or "LLM proposed a corrected reaction and the pipeline was rerun.",
+            data=fix,
+            comment="LLM proposed a corrected reaction",
         )
 
     async def _attempt_llm_fix_async(
@@ -185,6 +178,7 @@ class GradingPipeline:
                 ToolResult(
                     name="llm_reaction_fix",
                     status=ToolStatus.ERROR,
+                    data=None,
                     comment=f"LLM reaction fixer failed: {exc}",
                 ),
                 None,
@@ -197,16 +191,13 @@ class GradingPipeline:
                 ToolResult(
                     name="llm_reaction_fix",
                     status=ToolStatus.UNKNOWN,
-                    data={
-                        "original_reaction_smiles": rxn_smiles,
-                        "fixed_reaction_smiles": fix.fixed_reaction_smiles,
-                    },
+                    data=fix,
                     comment="LLM reaction fixer did not propose a changed reaction.",
                 ),
                 None,
             )
 
-        return self._build_fix_result(rxn_smiles, fix), fix.fixed_reaction_smiles
+        return self._build_fix_result(fix), fix.fixed_reaction_smiles
 
     async def _finalize_grade_async(
         self,

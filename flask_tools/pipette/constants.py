@@ -14,6 +14,8 @@ import json
 import os
 from typing import Any
 
+from pydantic import BaseModel
+
 LLM_API_KEY_ENV_VARS = (
     "FLASK_ORCHESTRATOR_API_KEY",
     "PIPETTE_API_KEY",
@@ -65,24 +67,19 @@ class FinalGrade(str, Enum):
     UNCERTAIN = "uncertain"  #  With the given tools and knowledge, it is not possible to ascertain whether this reaction is possible or not. (Use this, e.g., when certain tools cannot run, or the results are ambiguous)
 
 
-@dataclass
-class ToolResult:
+class ToolResult(BaseModel):
     name: str
     status: ToolStatus
-    data: dict[str, Any] = field(default_factory=dict)
+    data: ToolResultDetails | None  # None if tool had an error or wasn't run
     comment: str = ""
     skipped_reason: str | None = (
-        None  # If a priority checker skipped this tool, like in an exact rule pipeline
+        None  # If a priority checker skipped this tool, like in an exact rule pipeline, or a traceback if there was an error
     )
 
-    def to_json_dict(self) -> dict:
-        return {
-            "name": self.name,
-            "status": self.status.value,
-            "data": self.data,
-            "comment": self.comment,
-            "skipped_reason": self.skipped_reason,
-        }
+
+class ToolResultDetails(BaseModel):
+    # Miscellaneous details from a verifier. Each verifier should have their own Details class
+    pass
 
 
 @dataclass
@@ -132,7 +129,7 @@ ToolResultsDict = dict[tuple[Smi, CheckerName], ToolResult]
 
 class Confidence(StrEnum):
     HIGH = "high"
-    MED = "medium"
+    MEDIUM = "medium"
     LOW = "low"
 
 
@@ -141,8 +138,7 @@ class RxnSide(StrEnum):
     PRODUCTS = "products"
 
 
-@dataclass(frozen=True)
-class AllowedUnbalancedMolecule:
+class AllowedUnbalancedMolecule(BaseModel):
     # A molecule that is commonly missing from one side of a rxn. For example, a solvent may be on the left hand side.
     name: str
     smiles: str
@@ -150,8 +146,7 @@ class AllowedUnbalancedMolecule:
     confidence: Confidence
 
 
-@dataclass
-class ReactionMassImbalanceExplanation:
+class ReactionMassImbalanceExplanation(BaseModel):
     name: str
     smiles: str
     missing_side: RxnSide

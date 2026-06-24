@@ -48,7 +48,9 @@ class DFTMockedReactionEnergyChecker(ReactionEnergyChecker):
 
 
 def _pass_result(name: str) -> ToolResult:
-    return ToolResult(name=name, status=ToolStatus.PASS, comment=f"{name} passed")
+    return ToolResult(
+        name=name, data=None, status=ToolStatus.PASS, comment=f"{name} passed"
+    )
 
 
 def test_resolve_tool_list_supports_all_and_explicit_lists() -> None:

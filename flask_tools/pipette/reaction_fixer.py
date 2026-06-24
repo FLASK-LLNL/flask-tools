@@ -16,7 +16,7 @@ from typing import Any, Literal, TypeVar
 from pydantic import BaseModel
 
 from .config import PipetteConfig
-from .constants import ToolResult, resolve_llm_api_key
+from .constants import ToolResult, resolve_llm_api_key, ToolResultDetails
 from .llm_query import query_task, query_task_async
 from .smiles import (
     canonicalize_reaction_smiles,
@@ -28,8 +28,8 @@ from .smiles import (
 # The [H+] part is needed for rxns like caffeine, Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C
 
 
-@dataclass(frozen=True)
-class ReactionFix:
+class ReactionFixResultDetails(ToolResultDetails):
+    original_reaction_smiles: str
     fixed_reaction_smiles: str
     removed_agents: list[str]
     added_reactants: list[str]
@@ -107,7 +107,7 @@ class BaseLLMReactionFixer:
 
     def _parse_reaction_fix(
         self, original_reaction_smiles: str, response_text: str
-    ) -> ReactionFix:
+    ) -> ReactionFixResultDetails:
         try:
             parsed = ReactionFixResponse.model_validate_json(response_text)
         except Exception as exc:
@@ -125,7 +125,8 @@ class BaseLLMReactionFixer:
             canonical_fixed
         )
 
-        return ReactionFix(
+        return ReactionFixResultDetails(
+            original_reaction_smiles=original_reaction_smiles,
             fixed_reaction_smiles=canonical_fixed,
             removed_agents=self._multiset_difference(
                 self._canonical_component_list(original_agents),
@@ -151,9 +152,10 @@ class BaseLLMReactionFixer:
         rxn_smiles: str,
         results: list[ToolResult],
     ) -> dict[str, Any]:
-        serialized_results = [r.to_json_dict() for r in results]
+        serialized_results = [r.model_dump(exclude_none=True) for r in results]
         for s in serialized_results:
-            del s["skipped_reason"]
+            if "skipped_reason" in s:
+                del s["skipped_reason"]
         return {
             "reaction_smiles": rxn_smiles,
             "tool_results": serialized_results,
@@ -170,7 +172,7 @@ class LLMReactionFixer(BaseLLMReactionFixer):
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-    ) -> ReactionFix:
+    ) -> ReactionFixResultDetails:
         user_prompt = json.dumps(
             self._build_user_payload(rxn_smiles, results),
             indent=2,
@@ -199,7 +201,7 @@ class AsyncLLMReactionFixer(BaseLLMReactionFixer):
         self,
         rxn_smiles: str,
         results: list[ToolResult],
-    ) -> ReactionFix:
+    ) -> ReactionFixResultDetails:
         user_prompt = json.dumps(
             self._build_user_payload(rxn_smiles, results),
             indent=2,
