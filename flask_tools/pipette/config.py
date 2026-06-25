@@ -237,7 +237,7 @@ class ToolsConfig:
 @dataclass
 class PipetteConfig:
     mode: str = "exact"
-    tool_list: str | list[str] = "all"
+    tool_list: str | list[str] | None = "all"
     llm_judge: LLMJudgeConfig = field(default_factory=LLMJudgeConfig)
     llm_reaction_fixer: LLMReactionFixerConfig = field(
         default_factory=LLMReactionFixerConfig
@@ -259,11 +259,15 @@ class PipetteConfig:
         resolved_base_dir = base_dir or Path.cwd()
 
         tool_list = mapping.get("tool_list", "all")
-        if tool_list != "all":
+        if tool_list is None:
+            tool_list = []
+        elif tool_list != "all":
             if not isinstance(tool_list, list) or not all(
                 isinstance(name, str) for name in tool_list
             ):
-                raise ValueError("tool_list must be 'all' or a list of tool names.")
+                raise ValueError(
+                    "tool_list must be None, 'all', or a list of tool names."
+                )
             tool_list = list(tool_list)
 
         solvent_catalog_path = _resolve_optional_path(

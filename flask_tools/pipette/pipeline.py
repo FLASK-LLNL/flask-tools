@@ -32,7 +32,7 @@ LLMReactionFixer = AsyncLLMReactionFixer
 
 
 def resolve_tool_list(
-    tool_list: str | list[str],
+    tool_list: str | list[str] | None,
     available_tools: list[str],
     use_dft: bool = False,
 ) -> list[str]:
@@ -40,12 +40,14 @@ def resolve_tool_list(
         assert "reaction_energy" in available_tools
     if not use_dft:
         available_tools = [t for t in available_tools if t != "reaction_energy"]
+    if tool_list is None:
+        return []
     if tool_list == "all":
         return list(available_tools)
 
     if not isinstance(tool_list, list):
         raise ValueError(
-            "PipetteConfig.tool_list must be 'all' or a list of tool names."
+            "PipetteConfig.tool_list must be None, 'all', or a list of tool names."
         )
     if len(set(tool_list)) != len(tool_list):
         raise ValueError(
@@ -98,9 +100,10 @@ class GradingPipeline:
 
         unknown = sorted(set(self.config.llm_judge.allow_fail) - set(checker_names))
         if unknown:
-            raise ValueError(
-                "Unknown tool names in PipetteConfig.llm_judge.allow_fail: "
+            print(
+                "Tool names in PipetteConfig.llm_judge.allow_fail that are not in tool_list: "
                 + ", ".join(unknown)
+                + ". Ignoring."
             )
 
     def _should_skip_remaining(

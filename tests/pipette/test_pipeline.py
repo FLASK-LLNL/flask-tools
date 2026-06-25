@@ -57,6 +57,7 @@ def test_resolve_tool_list_supports_all_and_explicit_lists() -> None:
     available = ["a", "b", "c"]
 
     assert resolve_tool_list("all", available) == available
+    assert resolve_tool_list(None, available) == []
     assert resolve_tool_list(["c", "a"], available) == ["c", "a"]
 
 
@@ -122,3 +123,26 @@ def test_pipeline_skips_llm_fix_when_allow_fixing_is_false() -> None:
         "charge_conservation",
         "mass_conservation",
     ]
+
+
+@pytest.mark.parametrize("allow_fixing", [True, False])
+def test_pipeline_no_tools(
+    allow_fixing: bool,
+) -> None:
+    judge = RecordingJudge()
+    pipeline = build_default_pipeline(
+        config=PipetteConfig(
+            tool_list=None,
+            settings=PipelineConfig(allow_fixing=allow_fixing, use_dft=False),
+        ),
+        judge=judge,
+    )
+
+    result = next(pipeline.grade(["CCO>>CC=O"]))
+
+    assert pipeline.checkers == []
+    assert len(judge.calls) == 1
+    judged_rxn_smiles, judged_results = judge.calls[0]
+    assert judged_rxn_smiles == "CCO>>CC=O"
+    assert judged_results == []
+    assert result.results == []
