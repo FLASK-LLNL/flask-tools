@@ -82,8 +82,7 @@ class ToolResultDetails(BaseModel):
     pass
 
 
-@dataclass
-class ReactionGrade:
+class ReactionGrade(BaseModel):
     final_grade: FinalGrade
     short_comment: str
     results: list[ToolResult]

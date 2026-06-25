@@ -49,6 +49,7 @@ class BasicSmilesValidationChecker(ReactionChecker):
         fail_res = ToolResult(
             name=self.name,
             status=ToolStatus.FAIL,
+            data=None,
             comment="filled-later",
         )
         try:

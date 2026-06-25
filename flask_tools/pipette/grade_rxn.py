@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING
 from flask_tools.pipette.config import PipetteConfig, load_config, ConfigType
 from flask_tools.pipette.constants import ReactionGrade, ToolResult
 from flask_tools.pipette.pipeline import build_default_pipeline
+from flask_tools.pipette.reaction_fixer import ReactionFixResultDetails
 
 if TYPE_CHECKING:
     from .judge import AsyncLLMJudge
@@ -51,7 +52,8 @@ def _get_possible_fixed_rxn_smi(reaction_grade: ReactionGrade) -> str | None:
     tool_res: ToolResult
     for tool_res in reaction_grade.results:
         if tool_res.name == "llm_reaction_fix":
-            return tool_res.data["fixed_reaction_smiles"]
+            d: ReactionFixResultDetails = tool_res.data  # noqa
+            return d.fixed_reaction_smiles
     return None
 
 
@@ -63,7 +65,7 @@ def _grade_reactions(
     if isinstance(config, str):
         resolved_config = load_config(config)
     else:
-        resolved_config = config or PipetteConfig.from_default_exact_yaml()
+        resolved_config = config or PipetteConfig.from_default_ai_yaml()
     pipeline = build_default_pipeline(config=resolved_config, judge=judge)
     return list(pipeline.grade(rxn_smiles_list))
 
@@ -76,7 +78,7 @@ def _build_output_records(
         {
             "rxn_smiles": rxn_smiles,
             "cleaned_rxn_smiles": _get_possible_fixed_rxn_smi(result) or rxn_smiles,
-            "grade": asdict(result),
+            "grade": result.model_dump(mode="json"),
         }
         for rxn_smiles, result in zip(rxn_smiles_list, results, strict=True)
     ]
