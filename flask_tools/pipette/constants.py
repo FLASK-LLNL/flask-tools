@@ -14,7 +14,7 @@ import json
 import os
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, SerializeAsAny
 
 LLM_API_KEY_ENV_VARS = (
     "FLASK_ORCHESTRATOR_API_KEY",
@@ -70,7 +70,9 @@ class FinalGrade(str, Enum):
 class ToolResult(BaseModel):
     name: str
     status: ToolStatus
-    data: ToolResultDetails | None  # None if tool had an error or wasn't run
+    data: (
+        SerializeAsAny[ToolResultDetails] | None
+    )  # None if tool had an error or wasn't run. SerializeAsAny or else model_dump only outputs the parent class ToolResultDetails' fields which are nothing.
     comment: str = ""
     skipped_reason: str | None = (
         None  # If a priority checker skipped this tool, like in an exact rule pipeline, or a traceback if there was an error
@@ -108,7 +110,7 @@ class ReactionGrade(BaseModel):
                 tool_line += f" [skipped: {result.skipped_reason}]"
             lines.append(tool_line)
             if result.data:
-                for data_line in result.data.model_dump_json(indent=2):
+                for data_line in result.data.model_dump_json(indent=2).splitlines():
                     lines.append(f"    {data_line}")
         return "\n".join(lines)
 

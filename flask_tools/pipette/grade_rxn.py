@@ -103,7 +103,7 @@ def grade_reaction(
     assert len(res) == len(rxn_smiles_list)
     if verbose:
         for rxn_smiles, result in zip(rxn_smiles_list, res, strict=True):
-            print(f"{rxn_smiles}:\n{result}\n\n")
+            print(f"{rxn_smiles}:\n\n{result}\n\n")
     return res
 
 
