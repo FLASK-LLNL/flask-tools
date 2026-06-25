@@ -55,11 +55,15 @@ class PipelineConfig:
         0.5  # Permissive. Most rxns are below 0, but some that need heating up can be positive
     )
     use_dft: bool = False
+    allow_fixing: bool = True
 
     # All the from_mapping() is annoying, could this be better?
     @classmethod
     def from_mapping(cls, data: object) -> PipelineConfig:
         mapping = _validate_mapping_format(data, name="settings")
+        allow_fixing = mapping.get("allow_fixing", cls.allow_fixing)
+        if not isinstance(allow_fixing, bool):
+            raise ValueError("settings.allow_fixing must be a boolean.")
         return cls(
             stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
             mass_tolerance_atoms=mapping.get(
@@ -69,6 +73,7 @@ class PipelineConfig:
                 "reaction_energy_max_ev_mol", cls.reaction_energy_max_ev_mol
             ),
             use_dft=mapping.get("use_dft", cls.use_dft),
+            allow_fixing=allow_fixing,
         )
 
 
@@ -237,7 +242,7 @@ class PipetteConfig:
     llm_reaction_fixer: LLMReactionFixerConfig = field(
         default_factory=LLMReactionFixerConfig
     )
-    rules: PipelineConfig = field(default_factory=PipelineConfig)
+    settings: PipelineConfig = field(default_factory=PipelineConfig)
     tools_settings: ToolsConfig = field(default_factory=ToolsConfig)
     solvent_catalog_path: Path = field(
         default_factory=lambda: package_data_path("solvents.tsv")
@@ -265,6 +270,7 @@ class PipetteConfig:
             mapping.get("solvent_catalog_path"),
             base_dir=resolved_base_dir,
         )
+        pipeline_settings = mapping.get("settings", mapping.get("rules"))
 
         return cls(
             mode=mapping.get("mode", "exact"),
@@ -277,7 +283,7 @@ class PipetteConfig:
                 mapping.get("llm_reaction_fixer"),
                 base_dir=resolved_base_dir,
             ),
-            rules=PipelineConfig.from_mapping(mapping.get("rules")),
+            settings=PipelineConfig.from_mapping(pipeline_settings),
             tools_settings=ToolsConfig.from_mapping(
                 mapping.get("tools_settings"),
                 base_dir=resolved_base_dir,

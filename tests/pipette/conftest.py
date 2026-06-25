@@ -40,8 +40,8 @@ def disable_dft_for_default_test_configs(monkeypatch) -> None:
 
     def patched_init(self, *args, **kwargs) -> None:
         original_init(self, *args, **kwargs)
-        if "rules" not in kwargs and len(args) < 4:
-            self.rules.use_dft = False
+        if "settings" not in kwargs and len(args) < 4:
+            self.settings.use_dft = False
 
     monkeypatch.setattr(PipetteConfig, "__init__", patched_init)
 

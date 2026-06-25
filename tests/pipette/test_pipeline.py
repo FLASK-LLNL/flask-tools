@@ -71,7 +71,7 @@ def test_resolve_tool_list_rejects_unknown_and_duplicate_tools() -> None:
 def test_build_default_pipeline_uses_tool_list_order() -> None:
     # Check that tool call order respects tool_list
     config = PipetteConfig(
-        tool_list=["third", "first"], rules=PipelineConfig(use_dft=False)
+        tool_list=["third", "first"], settings=PipelineConfig(use_dft=False)
     )
     pipeline = build_default_pipeline(
         config=config,
@@ -83,3 +83,42 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     )
 
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
+
+
+def test_pipeline_skips_llm_fix_when_allow_fixing_is_false() -> None:
+    # If basic StubChecker is used in more tests like this in the future, refactor into conftest.
+    original = "CCO>>C=C"
+
+    smiles_validation = StubChecker(
+        "basic_smiles_validation", _pass_result("basic_smiles_validation")
+    )
+    exact = StubChecker(
+        "exact_match",
+        ToolResult(
+            name="exact_match",
+            status=ToolStatus.UNKNOWN,
+            data=None,
+            comment="No exact match.",
+        ),
+    )
+    charge = StubChecker("charge_conservation", _pass_result("charge_conservation"))
+    mass = StubChecker("mass_conservation", _pass_result("mass_conservation"))
+
+    class FailingFixer:
+        def fix(self, rxn_smiles: str, results: list[ToolResult]) -> None:
+            raise AssertionError("Fixer should not be called when fixing is disabled.")
+
+    pipeline = GradingPipeline(
+        checkers=[smiles_validation, exact, charge, mass],
+        config=PipetteConfig(mode="exact", settings=PipelineConfig(allow_fixing=False)),
+        reaction_fixer=FailingFixer(),  # noqa
+    )
+
+    result = next(pipeline.grade([original]))
+
+    assert [tool.name for tool in result.results] == [
+        "basic_smiles_validation",
+        "exact_match",
+        "charge_conservation",
+        "mass_conservation",
+    ]

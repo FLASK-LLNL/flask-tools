@@ -107,7 +107,7 @@ class GradingPipeline:
         self, checker: ReactionChecker, result: ToolResult
     ) -> bool:
         if (
-            not self.config.rules.stop_on_hard_fail
+            not self.config.settings.stop_on_hard_fail
             or not checker.stops_on_fail
             or (result.status not in {ToolStatus.FAIL, ToolStatus.ERROR})
             or (
@@ -264,6 +264,7 @@ class GradingPipeline:
             if (
                 checker.name == "exact_match"
                 and not fix_attempted
+                and self.config.settings.allow_fixing
                 # and self._should_try_llm_fix(context)
             ):
                 if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
@@ -336,7 +337,9 @@ def build_default_pipeline(
         ),
     }
     selected_names = resolve_tool_list(
-        config.tool_list, list(possible_checker_factories), use_dft=config.rules.use_dft
+        config.tool_list,
+        list(possible_checker_factories),
+        use_dft=config.settings.use_dft,
     )
     checkers = [possible_checker_factories[name](config) for name in selected_names]
     return GradingPipeline(

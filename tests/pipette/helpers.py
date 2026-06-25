@@ -14,7 +14,7 @@ import time
 
 
 def apply_no_dft_to_config(config: PipetteConfig) -> PipetteConfig:
-    config.rules.use_dft = False
+    config.settings.use_dft = False
     return config
 
 

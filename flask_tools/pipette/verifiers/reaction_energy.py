@@ -218,7 +218,7 @@ class ReactionEnergyChecker(CacheableReactionChecker):
 
         passed = (
             record.energy_difference_ev_mol
-            <= self.config.rules.reaction_energy_max_ev_mol
+            <= self.config.settings.reaction_energy_max_ev_mol
         )
         return ToolResult(
             name=self.name,
