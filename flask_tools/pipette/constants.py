@@ -109,15 +109,7 @@ class ReactionGrade:
                 tool_line += f" [skipped: {result.skipped_reason}]"
             lines.append(tool_line)
             if result.data:
-                for data_line in json.dumps(
-                    result.data,
-                    indent=2,
-                    default=lambda o: (
-                        asdict(o)
-                        if is_dataclass(o)
-                        else TypeError(f"not serializable: {o}")
-                    ),
-                ).splitlines():
+                for data_line in result.data.model_dump_json(indent=2):
                     lines.append(f"    {data_line}")
         return "\n".join(lines)
 

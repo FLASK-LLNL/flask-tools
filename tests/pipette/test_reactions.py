@@ -243,3 +243,7 @@ def test_pipeline_fixed_reaction(
         # Capturing this assertion to pretty print debug info. The LLM will occasionally fail reaction.
         print(str(result))
         raise e
+
+    # Check that ReactionGrade.__str__ works
+    s = str(result)
+    assert s
