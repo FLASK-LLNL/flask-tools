@@ -230,6 +230,28 @@ class GradingPipeline:
         fix_attempted: bool = False,
         previous_tool_results: ToolResultsDict | None = None,
     ) -> ReactionGrade:
+        async def maybe_call_fixer() -> ReactionGrade | None:
+            if not (self.config.settings.allow_fixing and not fix_attempted):
+                # and self._should_try_llm_fix(context)
+                return None
+
+            if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
+                raise RuntimeError("llm_reaction_fix already ran")
+            fix_attempt = await self._attempt_llm_fix_async(
+                rxn_smiles,
+                all_tool_results,
+            )
+            if fix_attempt is not None:
+                fix_result, fixed_rxn_smiles = fix_attempt
+                all_tool_results[(rxn_smiles, fix_result.name)] = fix_result
+                if fixed_rxn_smiles is not None:
+                    return await self.grade_one_async(
+                        fixed_rxn_smiles,
+                        fix_attempted=True,
+                        previous_tool_results=all_tool_results,
+                    )
+            return None
+
         previous_tool_results = previous_tool_results or {}
         all_tool_results: ToolResultsDict = previous_tool_results.copy()
         should_skip_remaining = False
@@ -264,27 +286,16 @@ class GradingPipeline:
             # Reaction fixing / infilling of byproducts
             # If LLM fixing returned a value, call new grade_one with new rxn and
             # it's main tool result list will start from the new rxn
-            if (
-                checker.name == "exact_match"
-                and not fix_attempted
-                and self.config.settings.allow_fixing
-                # and self._should_try_llm_fix(context)
-            ):
-                if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
-                    raise RuntimeError("llm_reaction_fix already ran")
-                fix_attempt = await self._attempt_llm_fix_async(
-                    rxn_smiles,
-                    all_tool_results,
-                )
-                if fix_attempt is not None:
-                    fix_result, fixed_rxn_smiles = fix_attempt
-                    all_tool_results[(rxn_smiles, fix_result.name)] = fix_result
-                    if fixed_rxn_smiles is not None:
-                        return await self.grade_one_async(
-                            fixed_rxn_smiles,
-                            fix_attempted=True,
-                            previous_tool_results=all_tool_results,
-                        )
+            if checker.name == "exact_match":
+                none_or_fixed_and_graded = await maybe_call_fixer()
+                if none_or_fixed_and_graded is not None:
+                    return none_or_fixed_and_graded
+        if (
+            not self.checkers
+        ):  # We allow using no tools while still attempting to fix the equation
+            none_or_fixed_and_graded = await maybe_call_fixer()
+            if none_or_fixed_and_graded is not None:
+                return none_or_fixed_and_graded
 
         return await self._finalize_grade_async(
             rxn_smiles, all_tool_results, previous_tool_results

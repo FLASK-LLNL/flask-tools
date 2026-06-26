@@ -18,7 +18,8 @@ from flask_tools.pipette.pipeline import (
     build_default_pipeline,
     resolve_tool_list,
 )
-from conftest import RecordingJudge
+from flask_tools.pipette.reaction_fixer import ReactionFixResultDetails
+from conftest import RecordingJudge, RecordingReactionFixer
 import helpers
 
 
@@ -86,7 +87,7 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
 
 
-def test_pipeline_skips_llm_fix_when_allow_fixing_is_false() -> None:
+def test_pipeline_can_skip_fixing() -> None:
     # If basic StubChecker is used in more tests like this in the future, refactor into conftest.
     original = "CCO>>C=C"
 
@@ -146,3 +147,44 @@ def test_pipeline_no_tools(
     assert judged_rxn_smiles == "CCO>>CC=O"
     assert judged_results == []
     assert result.results == []
+
+
+def test_pipeline_no_tools_can_still_apply_single_llm_fix() -> None:
+    # todo: fix
+    original = "CCO>>CC=O"
+    fixed = "CCO.O>>CC=O"
+    fixer = RecordingReactionFixer(
+        ReactionFixResultDetails(
+            original_reaction_smiles=original,
+            fixed_reaction_smiles=fixed,
+            removed_agents=[],
+            added_reactants=["O"],
+            removed_products=[],
+            added_products=[],
+            reasoning_summary="Added missing water reactant.",
+        )
+    )
+    judge = RecordingJudge()
+    pipeline = build_default_pipeline(
+        config=PipetteConfig(
+            tool_list=None,
+            settings=PipelineConfig(allow_fixing=True, use_dft=False),
+        ),
+        judge=judge,
+        reaction_fixer=fixer,
+    )
+
+    result = next(pipeline.grade([original]))
+
+    assert pipeline.checkers == []
+    assert len(fixer.calls) == 1
+    fixed_rxn_smiles, fixer_results = fixer.calls[0]
+    assert fixed_rxn_smiles == original
+    assert fixer_results == []
+    assert len(judge.calls) == 1
+    judged_rxn_smiles, judged_results = judge.calls[0]
+    assert judged_rxn_smiles == fixed
+    assert [tool.name for tool in judged_results] == ["llm_reaction_fix"]
+    assert [tool.name for tool in result.results] == ["llm_reaction_fix"]
+    assert result.results[0].data.original_reaction_smiles == original
+    assert result.results[0].data.fixed_reaction_smiles == fixed
