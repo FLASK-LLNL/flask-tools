@@ -1,0 +1,89 @@
+###############################################################################
+## Copyright 2025-2026 Lawrence Livermore National Security, LLC.
+## See the top-level LICENSE file for details.
+##
+## SPDX-License-Identifier: Apache-2.0
+###############################################################################
+
+from __future__ import annotations
+
+import rdkit.Chem
+
+from .base import ReactionChecker
+from ..constants import (
+    ToolResult,
+    ToolStatus,
+    ToolResultsDict,
+    ToolResultDetails,
+)
+from ..smiles import parse_reaction_smi
+
+
+def total_charge(molecules: list[rdkit.Chem.Mol]) -> int:
+    charge = 0
+    for molecule in molecules:
+        for atom in molecule.GetAtoms():
+            charge += atom.GetFormalCharge()
+    return charge
+
+
+def charge_difference(rxn_smiles: str) -> int:
+    """Checks of charge is balanced across for A and B for A>>B or A>C>B"""
+    reactants, _, products = parse_reaction_smi(rxn_smiles)
+    return total_charge(products) - total_charge(reactants)
+
+
+def check_charge_conservation(rxn_smiles: str) -> tuple[bool, str]:
+    try:
+        diff = charge_difference(rxn_smiles)
+    except Exception as exc:
+        return False, f"Error while parsing reaction SMILES: {exc}"
+
+    if diff != 0:
+        return False, f"Net difference in charge: {diff}"
+    return True, "Reaction is charge-conserved."
+
+
+class ChargeResultDetails(ToolResultDetails):
+    charge_difference: int
+
+
+class ChargeConservationChecker(ReactionChecker):
+    """Checks of charge is balanced across for A and B for A>>B or A>C>B
+    ToolResult example:
+            ToolResult(
+                name="charge_conservation",
+                status=ToolStatus.FAIL,
+                data=ChargeResultDetails(charge_difference=1),
+                comment=f"Charge is not conserved. Product minus reactant charge: 1.",
+            )
+    """
+
+    name = "charge_conservation"
+    stops_on_fail = True
+
+    def run(self, rxn_smiles: str, context: ToolResultsDict) -> ToolResult:
+        try:
+            diff = charge_difference(rxn_smiles)
+        except Exception as exc:
+            return ToolResult(
+                name=self.name,
+                status=ToolStatus.ERROR,
+                data=None,
+                comment=f"Charge conservation could not be evaluated: {exc}",
+            )
+
+        if diff != 0:
+            return ToolResult(
+                name=self.name,
+                status=ToolStatus.FAIL,
+                data=ChargeResultDetails(charge_difference=diff),
+                comment=f"Charge is not conserved. Product minus reactant charge: {diff}.",
+            )
+
+        return ToolResult(
+            name=self.name,
+            status=ToolStatus.PASS,
+            data=ChargeResultDetails(charge_difference=diff),
+            comment="Charge is conserved.",
+        )
