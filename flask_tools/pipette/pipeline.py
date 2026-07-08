@@ -231,7 +231,7 @@ class GradingPipeline:
         previous_tool_results: ToolResultsDict | None = None,
     ) -> ReactionGrade:
         async def maybe_call_fixer() -> ReactionGrade | None:
-            if not (self.config.settings.allow_fixing and not fix_attempted):
+            if not (self.config.settings.use_fixing and not fix_attempted):
                 # and self._should_try_llm_fix(context)
                 return None
 

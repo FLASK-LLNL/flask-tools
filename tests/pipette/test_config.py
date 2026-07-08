@@ -46,7 +46,7 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
               mass_tolerance_atoms: 2
               reaction_energy_max_ev_mol: 9.5
               use_dft: true
-              allow_fixing: false
+              use_fixing: false
             solvent_catalog_path: solvents.tsv
             """
         ).strip()
@@ -83,4 +83,4 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     assert config.settings.mass_tolerance_atoms == 2
     assert config.settings.reaction_energy_max_ev_mol == 9.5
     assert config.settings.use_dft is True
-    assert config.settings.allow_fixing is False
+    assert config.settings.use_fixing is False

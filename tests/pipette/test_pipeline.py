@@ -112,7 +112,7 @@ def test_pipeline_can_skip_fixing() -> None:
 
     pipeline = GradingPipeline(
         checkers=[smiles_validation, exact, charge, mass],
-        config=PipetteConfig(mode="exact", settings=PipelineConfig(allow_fixing=False)),
+        config=PipetteConfig(mode="exact", settings=PipelineConfig(use_fixing=False)),
         reaction_fixer=FailingFixer(),  # noqa
     )
 
@@ -126,15 +126,15 @@ def test_pipeline_can_skip_fixing() -> None:
     ]
 
 
-@pytest.mark.parametrize("allow_fixing", [True, False])
+@pytest.mark.parametrize("use_fixing", [True, False])
 def test_pipeline_no_tools(
-    allow_fixing: bool,
+    use_fixing: bool,
 ) -> None:
     judge = RecordingJudge()
     pipeline = build_default_pipeline(
         config=PipetteConfig(
             tool_list=None,
-            settings=PipelineConfig(allow_fixing=allow_fixing, use_dft=False),
+            settings=PipelineConfig(use_fixing=use_fixing, use_dft=False),
         ),
         judge=judge,
     )
@@ -168,7 +168,7 @@ def test_pipeline_no_tools_can_still_apply_single_llm_fix() -> None:
     pipeline = build_default_pipeline(
         config=PipetteConfig(
             tool_list=None,
-            settings=PipelineConfig(allow_fixing=True, use_dft=False),
+            settings=PipelineConfig(use_fixing=True, use_dft=False),
         ),
         judge=judge,
         reaction_fixer=fixer,

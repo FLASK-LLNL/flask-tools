@@ -201,7 +201,7 @@ def main() -> list[dict]:
     rxn_smiles_list = args.rxn_smi or load_reaction_smiles_file(args.file)
     config = load_config(args.config)
     if args.no_fix:
-        config.settings.allow_fixing = False
+        config.settings.use_fixing = False
     results = grade_reaction(rxn_smiles_list, config=config, verbose=True)
     output = _build_output_records(rxn_smiles_list, results)
     if args.verbose:
