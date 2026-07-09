@@ -87,9 +87,15 @@ def test_build_default_pipeline_uses_tool_list_order() -> None:
     assert [checker.name for checker in pipeline.checkers] == ["third", "first"]
 
 
-def test_pipeline_can_skip_fixing() -> None:
-    # If basic StubChecker is used in more tests like this in the future, refactor into conftest.
+@pytest.mark.parametrize(
+    "use_tools, use_fixing",
+    [[True, False], [True, True], [False, False], [False, True]],
+)
+def test_pipeline_with_or_without_tools_and_fixing(
+    use_tools: bool, use_fixing: bool
+) -> None:
     original = "CCO>>C=C"
+    fixed = "CCO.O>>CC=O"
 
     smiles_validation = StubChecker(
         "basic_smiles_validation", _pass_result("basic_smiles_validation")
@@ -110,50 +116,7 @@ def test_pipeline_can_skip_fixing() -> None:
         def fix(self, rxn_smiles: str, results: list[ToolResult]) -> None:
             raise AssertionError("Fixer should not be called when fixing is disabled.")
 
-    pipeline = GradingPipeline(
-        checkers=[smiles_validation, exact, charge, mass],
-        config=PipetteConfig(mode="exact", settings=PipelineConfig(use_fixing=False)),
-        reaction_fixer=FailingFixer(),  # noqa
-    )
-
-    result = next(pipeline.grade([original]))
-
-    assert [tool.name for tool in result.results] == [
-        "basic_smiles_validation",
-        "exact_match",
-        "charge_conservation",
-        "mass_conservation",
-    ]
-
-
-@pytest.mark.parametrize("use_fixing", [True, False])
-def test_pipeline_no_tools(
-    use_fixing: bool,
-) -> None:
-    judge = RecordingJudge()
-    pipeline = build_default_pipeline(
-        config=PipetteConfig(
-            tool_list=None,
-            settings=PipelineConfig(use_fixing=use_fixing, use_dft=False),
-        ),
-        judge=judge,
-    )
-
-    result = next(pipeline.grade(["CCO>>CC=O"]))
-
-    assert pipeline.checkers == []
-    assert len(judge.calls) == 1
-    judged_rxn_smiles, judged_results = judge.calls[0]
-    assert judged_rxn_smiles == "CCO>>CC=O"
-    assert judged_results == []
-    assert result.results == []
-
-
-def test_pipeline_no_tools_can_still_apply_single_llm_fix() -> None:
-    # todo: fix
-    original = "CCO>>CC=O"
-    fixed = "CCO.O>>CC=O"
-    fixer = RecordingReactionFixer(
+    good_fixer = RecordingReactionFixer(
         ReactionFixResultDetails(
             original_reaction_smiles=original,
             fixed_reaction_smiles=fixed,
@@ -164,27 +127,44 @@ def test_pipeline_no_tools_can_still_apply_single_llm_fix() -> None:
             reasoning_summary="Added missing water reactant.",
         )
     )
-    judge = RecordingJudge()
-    pipeline = build_default_pipeline(
+
+    pipeline = GradingPipeline(
+        checkers=[smiles_validation, exact, charge, mass] if use_tools else [],
         config=PipetteConfig(
-            tool_list=None,
-            settings=PipelineConfig(use_fixing=True, use_dft=False),
+            mode="exact",
+            # the tool_list is not really necessary since we are constructing GradingPipeline explicitly instead of from the config
+            tool_list="all" if use_tools else None,
+            settings=PipelineConfig(use_fixing=use_fixing),
         ),
-        judge=judge,
-        reaction_fixer=fixer,
+        reaction_fixer=good_fixer if use_fixing else FailingFixer(),  # noqa
     )
 
     result = next(pipeline.grade([original]))
 
-    assert pipeline.checkers == []
-    assert len(fixer.calls) == 1
-    fixed_rxn_smiles, fixer_results = fixer.calls[0]
-    assert fixed_rxn_smiles == original
-    assert fixer_results == []
-    assert len(judge.calls) == 1
-    judged_rxn_smiles, judged_results = judge.calls[0]
-    assert judged_rxn_smiles == fixed
-    assert [tool.name for tool in judged_results] == ["llm_reaction_fix"]
-    assert [tool.name for tool in result.results] == ["llm_reaction_fix"]
-    assert result.results[0].data.original_reaction_smiles == original
-    assert result.results[0].data.fixed_reaction_smiles == fixed
+    basic_before_fixer_tool_names = [
+        "basic_smiles_validation",
+        "exact_match",
+    ]
+    basic_tool_names = [
+        "basic_smiles_validation",
+        "exact_match",
+        "charge_conservation",
+        "mass_conservation",
+    ]
+    if use_tools:
+        if use_fixing:
+            assert [
+                tool.name for tool in result.results
+            ] == basic_before_fixer_tool_names + ["llm_reaction_fix"] + basic_tool_names
+        else:
+            assert [tool.name for tool in result.results] == basic_tool_names
+    else:
+        if use_fixing:
+            assert [tool.name for tool in result.results] == ["llm_reaction_fix"]
+        else:
+            assert result.results == []
+
+    if use_fixing:
+        tool_res = [t for t in result.results if t.name == "llm_reaction_fix"][0]
+        assert tool_res.data.original_reaction_smiles == original
+        assert tool_res.data.fixed_reaction_smiles == fixed

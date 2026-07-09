@@ -83,7 +83,7 @@ class GradingPipeline:
         reaction_fixer: AsyncLLMReactionFixer | None = None,
     ) -> None:
         """judge: If provided, overrides the judge specified by the config"""
-        self.checkers = checkers
+        self.checkers = checkers or []
         self.config = config or PipetteConfig()
         self.judge = judge
         self.reaction_fixer = reaction_fixer
