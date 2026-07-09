@@ -114,6 +114,13 @@ Balanced
 Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C.[OH3+].[I-]
 ```
 
+## Disabling tools or reaction fixing
+
+The llm reaction fixer can be disabled with `python grade_rxn.py --no-fix ...` or setting `use_fix: False` in the config
+`settings` section.
+
+The tools can also be disabled by setting `tool_list: null` in the the config.
+
 ## Full JSON Output
 `results` from `grade_reactions()` is a list of `ReactionGrade` objects, which is a series of `ToolResults` and a final grade:
 ```
