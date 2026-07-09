@@ -55,11 +55,15 @@ class PipelineConfig:
         0.5  # Permissive. Most rxns are below 0, but some that need heating up can be positive
     )
     use_dft: bool = False
+    use_fixing: bool = True
 
     # All the from_mapping() is annoying, could this be better?
     @classmethod
     def from_mapping(cls, data: object) -> PipelineConfig:
         mapping = _validate_mapping_format(data, name="settings")
+        use_fixing = mapping.get("use_fixing", cls.use_fixing)
+        if not isinstance(use_fixing, bool):
+            raise ValueError("settings.use_fixing must be a boolean.")
         return cls(
             stop_on_hard_fail=mapping.get("stop_on_hard_fail", cls.stop_on_hard_fail),
             mass_tolerance_atoms=mapping.get(
@@ -69,6 +73,7 @@ class PipelineConfig:
                 "reaction_energy_max_ev_mol", cls.reaction_energy_max_ev_mol
             ),
             use_dft=mapping.get("use_dft", cls.use_dft),
+            use_fixing=use_fixing,
         )
 
 
@@ -232,12 +237,12 @@ class ToolsConfig:
 @dataclass
 class PipetteConfig:
     mode: str = "exact"
-    tool_list: str | list[str] = "all"
+    tool_list: str | list[str] | None = "all"
     llm_judge: LLMJudgeConfig = field(default_factory=LLMJudgeConfig)
     llm_reaction_fixer: LLMReactionFixerConfig = field(
         default_factory=LLMReactionFixerConfig
     )
-    rules: PipelineConfig = field(default_factory=PipelineConfig)
+    settings: PipelineConfig = field(default_factory=PipelineConfig)
     tools_settings: ToolsConfig = field(default_factory=ToolsConfig)
     solvent_catalog_path: Path = field(
         default_factory=lambda: package_data_path("solvents.tsv")
@@ -254,17 +259,22 @@ class PipetteConfig:
         resolved_base_dir = base_dir or Path.cwd()
 
         tool_list = mapping.get("tool_list", "all")
-        if tool_list != "all":
+        if tool_list is None:
+            tool_list = []
+        elif tool_list != "all":
             if not isinstance(tool_list, list) or not all(
                 isinstance(name, str) for name in tool_list
             ):
-                raise ValueError("tool_list must be 'all' or a list of tool names.")
+                raise ValueError(
+                    "tool_list must be None, 'all', or a list of tool names."
+                )
             tool_list = list(tool_list)
 
         solvent_catalog_path = _resolve_optional_path(
             mapping.get("solvent_catalog_path"),
             base_dir=resolved_base_dir,
         )
+        pipeline_settings = mapping.get("settings", mapping.get("rules"))
 
         return cls(
             mode=mapping.get("mode", "exact"),
@@ -277,7 +287,7 @@ class PipetteConfig:
                 mapping.get("llm_reaction_fixer"),
                 base_dir=resolved_base_dir,
             ),
-            rules=PipelineConfig.from_mapping(mapping.get("rules")),
+            settings=PipelineConfig.from_mapping(pipeline_settings),
             tools_settings=ToolsConfig.from_mapping(
                 mapping.get("tools_settings"),
                 base_dir=resolved_base_dir,

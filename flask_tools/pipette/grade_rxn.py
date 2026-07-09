@@ -191,10 +191,17 @@ def main() -> list[dict]:
         action="store_true",
         help="Prints out json object",
     )
+    parser.add_argument(
+        "--no-fix",
+        action="store_true",
+        help="Disable the LLM reaction fixer for this run.",
+    )
     args = parser.parse_args()
 
     rxn_smiles_list = args.rxn_smi or load_reaction_smiles_file(args.file)
     config = load_config(args.config)
+    if args.no_fix:
+        config.settings.use_fixing = False
     results = grade_reaction(rxn_smiles_list, config=config, verbose=True)
     output = _build_output_records(rxn_smiles_list, results)
     if args.verbose:

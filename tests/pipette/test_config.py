@@ -41,11 +41,12 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
               api_key: sk-fix
               prompt_path: fixer-prompt.txt
               prompt: inline fixer prompt
-            rules:
+            settings:
               stop_on_hard_fail: false
               mass_tolerance_atoms: 2
               reaction_energy_max_ev_mol: 9.5
               use_dft: true
+              use_fixing: false
             solvent_catalog_path: solvents.tsv
             """
         ).strip()
@@ -78,7 +79,8 @@ def test_pipette_config_from_yaml_loads_nested_sections(tmp_path) -> None:
     assert config.llm_reaction_fixer.model == "gpt-5.5"
     assert config.llm_reaction_fixer.api_key == "sk-fix"
     assert config.llm_reaction_fixer.prompt == "inline fixer prompt"
-    assert config.rules.stop_on_hard_fail is False
-    assert config.rules.mass_tolerance_atoms == 2
-    assert config.rules.reaction_energy_max_ev_mol == 9.5
-    assert config.rules.use_dft is True
+    assert config.settings.stop_on_hard_fail is False
+    assert config.settings.mass_tolerance_atoms == 2
+    assert config.settings.reaction_energy_max_ev_mol == 9.5
+    assert config.settings.use_dft is True
+    assert config.settings.use_fixing is False

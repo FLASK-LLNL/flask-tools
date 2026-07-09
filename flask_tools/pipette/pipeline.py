@@ -32,7 +32,7 @@ LLMReactionFixer = AsyncLLMReactionFixer
 
 
 def resolve_tool_list(
-    tool_list: str | list[str],
+    tool_list: str | list[str] | None,
     available_tools: list[str],
     use_dft: bool = False,
 ) -> list[str]:
@@ -40,12 +40,14 @@ def resolve_tool_list(
         assert "reaction_energy" in available_tools
     if not use_dft:
         available_tools = [t for t in available_tools if t != "reaction_energy"]
+    if tool_list is None:
+        return []
     if tool_list == "all":
         return list(available_tools)
 
     if not isinstance(tool_list, list):
         raise ValueError(
-            "PipetteConfig.tool_list must be 'all' or a list of tool names."
+            "PipetteConfig.tool_list must be None, 'all', or a list of tool names."
         )
     if len(set(tool_list)) != len(tool_list):
         raise ValueError(
@@ -81,7 +83,7 @@ class GradingPipeline:
         reaction_fixer: AsyncLLMReactionFixer | None = None,
     ) -> None:
         """judge: If provided, overrides the judge specified by the config"""
-        self.checkers = checkers
+        self.checkers = checkers or []
         self.config = config or PipetteConfig()
         self.judge = judge
         self.reaction_fixer = reaction_fixer
@@ -98,16 +100,17 @@ class GradingPipeline:
 
         unknown = sorted(set(self.config.llm_judge.allow_fail) - set(checker_names))
         if unknown:
-            raise ValueError(
-                "Unknown tool names in PipetteConfig.llm_judge.allow_fail: "
+            print(
+                "Tool names in PipetteConfig.llm_judge.allow_fail that are not in tool_list: "
                 + ", ".join(unknown)
+                + ". Ignoring."
             )
 
     def _should_skip_remaining(
         self, checker: ReactionChecker, result: ToolResult
     ) -> bool:
         if (
-            not self.config.rules.stop_on_hard_fail
+            not self.config.settings.stop_on_hard_fail
             or not checker.stops_on_fail
             or (result.status not in {ToolStatus.FAIL, ToolStatus.ERROR})
             or (
@@ -227,6 +230,28 @@ class GradingPipeline:
         fix_attempted: bool = False,
         previous_tool_results: ToolResultsDict | None = None,
     ) -> ReactionGrade:
+        async def maybe_call_fixer() -> ReactionGrade | None:
+            if not (self.config.settings.use_fixing and not fix_attempted):
+                # and self._should_try_llm_fix(context)
+                return None
+
+            if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
+                raise RuntimeError("llm_reaction_fix already ran")
+            fix_attempt = await self._attempt_llm_fix_async(
+                rxn_smiles,
+                all_tool_results,
+            )
+            if fix_attempt is not None:
+                fix_result, fixed_rxn_smiles = fix_attempt
+                all_tool_results[(rxn_smiles, fix_result.name)] = fix_result
+                if fixed_rxn_smiles is not None:
+                    return await self.grade_one_async(
+                        fixed_rxn_smiles,
+                        fix_attempted=True,
+                        previous_tool_results=all_tool_results,
+                    )
+            return None
+
         previous_tool_results = previous_tool_results or {}
         all_tool_results: ToolResultsDict = previous_tool_results.copy()
         should_skip_remaining = False
@@ -261,26 +286,16 @@ class GradingPipeline:
             # Reaction fixing / infilling of byproducts
             # If LLM fixing returned a value, call new grade_one with new rxn and
             # it's main tool result list will start from the new rxn
-            if (
-                checker.name == "exact_match"
-                and not fix_attempted
-                # and self._should_try_llm_fix(context)
-            ):
-                if (rxn_smiles, "llm_reaction_fix") in previous_tool_results:
-                    raise RuntimeError("llm_reaction_fix already ran")
-                fix_attempt = await self._attempt_llm_fix_async(
-                    rxn_smiles,
-                    all_tool_results,
-                )
-                if fix_attempt is not None:
-                    fix_result, fixed_rxn_smiles = fix_attempt
-                    all_tool_results[(rxn_smiles, fix_result.name)] = fix_result
-                    if fixed_rxn_smiles is not None:
-                        return await self.grade_one_async(
-                            fixed_rxn_smiles,
-                            fix_attempted=True,
-                            previous_tool_results=all_tool_results,
-                        )
+            if checker.name == "exact_match":
+                none_or_fixed_and_graded = await maybe_call_fixer()
+                if none_or_fixed_and_graded is not None:
+                    return none_or_fixed_and_graded
+        if (
+            not self.checkers
+        ):  # We allow using no tools while still attempting to fix the equation
+            none_or_fixed_and_graded = await maybe_call_fixer()
+            if none_or_fixed_and_graded is not None:
+                return none_or_fixed_and_graded
 
         return await self._finalize_grade_async(
             rxn_smiles, all_tool_results, previous_tool_results
@@ -336,7 +351,9 @@ def build_default_pipeline(
         ),
     }
     selected_names = resolve_tool_list(
-        config.tool_list, list(possible_checker_factories), use_dft=config.rules.use_dft
+        config.tool_list,
+        list(possible_checker_factories),
+        use_dft=config.settings.use_dft,
     )
     checkers = [possible_checker_factories[name](config) for name in selected_names]
     return GradingPipeline(
