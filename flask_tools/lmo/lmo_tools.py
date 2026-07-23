@@ -23,18 +23,16 @@ import os
 from charge.tasks.task import Task
 from flask_tools.utils.server_utils import add_server_arguments, update_mcp_network
 
-from charge.clients.autogen import AutoGenBackend
-from charge.clients.client import Client
+from charge.clients.agentframework import AgentFrameworkBackend
 import asyncio
 from flask_tools.chemistry import smiles_utils
 from flask_tools.lmo.molecular_property_utils import get_density
-import argparse
 from typing import Optional, Literal, Tuple
 from flask_tools.lmo.molecular_property_utils import PropertyType
 
 
 JSON_FILE_PATH = f"{os.getcwd()}/known_molecules.json"
-AGENT_BACKEND: AutoGenBackend | None = None
+AGENT_BACKEND: AgentFrameworkBackend | None = None
 
 
 def _load_known_molecules(file_path: str) -> list[dict]:
@@ -176,10 +174,18 @@ def calculate_property(
         raise ValueError(f"Unknown property: {property}")
 
 
-def setup_autogen_pool(
-    model: str, backend: str, api_key: Optional[str], base_url: Optional[str]
+def setup_agent_pool(
+    model: str,
+    backend: str,
+    api_key: Optional[str],
+    base_url: Optional[str],
+    reasoning_effort: Literal["low", "medium", "high"] = "medium",
 ):
     global AGENT_BACKEND
-    AGENT_BACKEND = AutoGenBackend(
-        model=model, backend=backend, api_key=api_key, base_url=base_url
+    AGENT_BACKEND = AgentFrameworkBackend(
+        model=model,
+        backend=backend,
+        api_key=api_key,
+        base_url=base_url,
+        reasoning_effort=reasoning_effort,
     )
