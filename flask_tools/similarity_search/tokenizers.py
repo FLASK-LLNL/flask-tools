@@ -7,7 +7,7 @@
 
 import re
 import json
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractmethod
 
 
 class SmilesTokenizer(ABC):
@@ -24,11 +24,11 @@ class SmilesTokenizer(ABC):
     def tokenize(self, smiles: str) -> list[str]:
         return [token for token in self.regex.findall(smiles)]
 
-    @abstractclassmethod
+    @abstractmethod
     def _convert_token_to_id(self, token: str) -> int:
         pass
 
-    @abstractclassmethod
+    @abstractmethod
     def _convert_id_to_token(self, index: int) -> str:
         pass
 
@@ -72,9 +72,8 @@ class ChemformerTokenizer(SmilesTokenizer):
         # Load Chemformer-specific vocab file
         with open(vocab_path, "r") as f:
             vocab_config = json.load(f)
-        assert (
-            "vocabulary" in vocab_config and "properties" in vocab_config
-        ), "Vocab file does not have the right Chemformer-specific format."
+        assert "vocabulary" in vocab_config and "properties" in vocab_config, \
+            "Vocab file does not have the right Chemformer-specific format."
         self.vocab = {token: i for i, token in enumerate(vocab_config["vocabulary"])}
         self.ids_to_tokens = {v: k for k, v in self.vocab.items()}
         self.special_tokens = vocab_config["properties"].get("special_tokens", {})

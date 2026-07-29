@@ -7,23 +7,23 @@
 
 import torch
 import numpy as np
-from numpy import ndarray
+from numpy.typing import NDArray
 from torch.nn.utils.rnn import pad_sequence
-from .rag_tokenizers import SmilesTokenizer
+from .tokenizers import ChemformerTokenizer
 
 
-class SmilesEmbedder:
+class ChemformerEmbedder:
     def __init__(
         self,
         model_path: str,
-        tokenizer: SmilesTokenizer,
+        tokenizer: ChemformerTokenizer,
         max_len: int | None = None,
         device: torch.device | int | None = None,
     ) -> None:
         """
         Args:
             model_path (str): path to trained embedding model
-            tokenizer (SmilesTokenizer): a tokenizer class for tokenizing SMILES strings
+            tokenizer (ChemformerTokenizer): a tokenizer class for tokenizing SMILES strings
             max_len (int | None): if specified, limits the number of tokens from the tokenizer to a max length
             device (torch.device | int | None): specifies where the model should live in
         """
@@ -51,16 +51,14 @@ class SmilesEmbedder:
             "attention_mask": attn_mask.long().to(self.device),
         }
 
-    def embed_smiles(self, smiles: list[str]) -> ndarray:
+    def embed_smiles(self, smiles: list[str]) -> NDArray:
         """
         Args:
             smiles (list[str]): a list of SMILES strings
         Returns:
             Embedding vectors of shape ``[B, d]``.
         """
-        assert isinstance(
-            smiles, list
-        ), "Input argument `smiles` must be of type list[str]."
+        assert isinstance(smiles, list), "Input argument `smiles` must be of type list[str]."
 
         ragged_ids = self.tokenizer(smiles)
         batch = self.pad_input_ids(ragged_ids)
