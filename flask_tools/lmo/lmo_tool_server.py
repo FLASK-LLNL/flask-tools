@@ -85,7 +85,7 @@ def main(
 
     import flask_tools.lmo.lmo_tools as LMO_MCP
 
-    LMO_MCP.setup_autogen_pool(
+    LMO_MCP.setup_agent_pool(
         api_key=api_key,
         base_url=base_url,
         model=model,
