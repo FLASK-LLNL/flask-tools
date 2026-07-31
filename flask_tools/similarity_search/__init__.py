@@ -5,5 +5,5 @@
 ## SPDX-License-Identifier: Apache-2.0
 ###############################################################################
 
-from .embedders import SmilesEmbedder
+from .embedders import ChemformerEmbedder
 from .retrievers import FaissDataRetriever
