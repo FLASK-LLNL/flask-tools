@@ -1,7 +1,12 @@
 llm_judge:
-  enable_atom_mapping_dict_in_prompt: false
   allow_fail:
     - exact_match
+tool_list:
+  - "basic_smiles_validation"
+  - "exact_match"
+  - "charge_conservation"
+  - "mass_conservation"
+  - "reaction_energy"
 settings:
   stop_on_hard_fail: true
   mass_tolerance_atoms: 0

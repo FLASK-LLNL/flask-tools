@@ -8,6 +8,9 @@ The current pipeline includes:
 - reaction SMILES parsing
 - basic SMILES validation
 - exact-match checker interfaces for reaction databases
+- graph based balancing - Attempt to balance reaction by adding copies of reactants. Good for dimerization reactions
+  - If this is enabled, the reaction fixing LLM is called here instead of later
+- atom mapping
 - reaction fixing LLM call
   - Run if no exact match is found
   - If new reaction is returned, goes back to start. Only allowed to run once in a pipeline
@@ -150,20 +153,14 @@ The tools can also be disabled by setting `tool_list: null` in the the config.
           "skipped_reason": null
         },
         {
-          "name": "llm_reaction_fix",
+          "name": "RDTAtomMapper",
           "status": "pass",
           "data": {
-            "original_reaction_smiles": "Cn1cnc2c1c(=O)[nH]c(=O)n2C.CI>>CN1C=NC2=C1C(=O)N(C(=O)N2C)C",
-            "fixed_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.[H+].[I-]",
-            "removed_agents": [],
-            "added_reactants": [],
-            "added_products": [
-              "[H+]",
-              "[I-]"
-            ]
+            "input_reaction_smiles": "CI.Cn1cnc2c1c(=O)[nH]c(=O)n2C>>Cn1c(=O)c2c(ncn2C)n(C)c1=O.I",
+            "mapped_reaction_smiles": "[O:10]=[C:9]1[NH:11][C:12](=[O:13])[N:14]([C:7]=2[N:6]=[CH:5][N:4]([C:8]12)[CH3:3])[CH3:15].[I:2][CH3:1]>>[N:14]1([C:7]=2[N:6]=[CH:5][N:4]([CH3:3])[C:8]2[C:9]([N:11]([CH3:1])[C:12]1=[O:13])=[O:10])[CH3:15].[IH:2]",
+            "product_to_reactant": []
           },
-          "comment": "N-methylation of the xanthine NH with methyl iodide requires HI as the byproduct, represented as [H+] and [I-]. No agents were present to remove.",
-          "skipped_reason": null
+          "comment": "RDT atom mapping completed."
         },
         {
           "name": "basic_smiles_validation",
@@ -236,3 +233,46 @@ config = PipetteConfig.from_yaml("my-config.yaml")
 `pytest`
 Or
 `pytest -m llm_query` to run the tests that use LLM
+
+# ReactionDecoder / RDT
+
+`pipette` includes a Python wrapper around the Java-based [ReactionDecoder Tool](https://github.com/asad/ReactionDecoder) (RDT). There is accomplished with a short Java wrapper script that calls ReactionDecoder, and gets called by the Python wrapper script.
+
+The wrapper uses `RDT`'s built-in defaults for mapping options.
+
+To compile the Java wrapper script, you must first build a fat jar of RDT.
+
+You must have Java 25 installed. Check your existing java with `java --version`. The `install_rdt.sh` script will install Java and Maven, and then compile the RDT java wrapper.
+
+```bash
+./scripts/install_rdt.sh
+export PIPETTE_RDT_JAR=/absolute/path/to/ReactionDecoder/target/rdt-4.0.0-jar-with-dependencies.jar
+export PIPETTE_RDT_HELPER_BUILD_DIR=/absolute/path/to/flask-tools/flask_tools/pipette/_java_build
+```
+
+Use it from Python:
+
+```python
+from flask_tools.pipette.verifiers.rdt import (
+  map_reaction_smiles_with_rdt,
+  map_reaction_smiles_list_with_rdt,
+)
+
+mapped = map_reaction_smiles_with_rdt("CC(=O)O.OCC>>CC(=O)OCC.O")
+mapped_many = map_reaction_smiles_list_with_rdt(
+  [
+    "CC(=O)O.OCC>>CC(=O)OCC.O",
+    "CCO>>CC=O",
+  ]
+)
+```
+
+Or from the CLI:
+
+```bash
+pipette-rdt --rxn-smi 'CC(=O)O.OCC>>CC(=O)OCC.O'
+# Outputs [O:3]=[C:2]([OH:4])[CH3:1].[OH:5][CH2:6][CH3:7]>>[O:5]([C:2]([CH3:1])=[O:4])[CH2:6][CH3:7].[OH2:3]
+pipette-rdt --file reactions.txt --json
+```
+
+If the input uses `reactants>agents>products`, the wrapper strips agents for RDT, maps the core reaction, and then reinserts the original agents into the returned reaction SMILES.
