@@ -13,10 +13,12 @@ from flask_tools.utils.server_utils import update_mcp_network, get_hostname
 
 import logging
 from loguru import logger
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 from fastmcp import FastMCP
+
 mcp = FastMCP("Similarity search")
 
 
@@ -44,10 +46,10 @@ def retrieve_similar_reactions(smiles: str, forward: bool, k: int) -> list[dict]
     embedder = forward_embedder if forward else retro_embedder
     query_emb = embedder.embed_smiles([smiles])
     similar_dist, similar_idx, similar = retriever.search_similar(query_emb, k=k)
-    similar = similar[0] # list[list[Any]] -> list[Any]
+    similar = similar[0]  # list[list[Any]] -> list[Any]
     # Clean up the retrieved similar reactions
     similar_ = [
-        {k: v for k, v in rxn.items() if v not in ([], '', [''], None) and k != 'id'}
+        {k: v for k, v in rxn.items() if v not in ([], "", [""], None) and k != "id"}
         for rxn in similar
     ]
     return similar_
@@ -68,15 +70,51 @@ retro_retriever: FaissDataRetriever = None
 )
 @click.option("--port", type=int, default=8127, help="Port to run the server on")
 @click.option("--host", type=str, default=None, help="Host to run the server on")
-@click.option("--name", type=str, default="similarity_search_tools", help="Name of the MCP server")
-@click.option("--copilot-port", type=int, default=8001, help="Port to the running copilot backend")
-@click.option("--copilot-host", type=str, default=None, help="Host to the running copilot backend")
-@click.option("--database-path", type=str, help="Path to database file for similarity search")
-@click.option("--forward-embedder-path", type=str, help="Path to embedding model for reactants")
-@click.option("--retro-embedder-path", type=str, help="Path to embedding model for products")
-@click.option("--embedder-vocab-path", type=str, help="Path to embedding model vocab json file")
-@click.option("--forward-embedding-path", type=str, help="Path to embedding file (NPY) for database reactants")
-@click.option("--retro-embedding-path", type=str, help="Path to embedding file (NPY) for database products")
+@click.option(
+    "--name", type=str, default="similarity_search_tools", help="Name of the MCP server"
+)
+@click.option(
+    "--copilot-port", type=int, default=8001, help="Port to the running copilot backend"
+)
+@click.option(
+    "--copilot-host", type=str, default=None, help="Host to the running copilot backend"
+)
+@click.option(
+    "--database-path",
+    envvar="FLASK_SIMILARITY_SEARCH_DATABASE_PATH",
+    type=str,
+    help="Path to database file for similarity search",
+)
+@click.option(
+    "--forward-embedder-path",
+    envvar="FLASK_SIMILARITY_SEARCH_FORWARD_EMBEDDER_PATH",
+    type=str,
+    help="Path to embedding model for reactants",
+)
+@click.option(
+    "--retro-embedder-path",
+    envvar="FLASK_SIMILARITY_SEARCH_RETRO_EMBEDDER_PATH",
+    type=str,
+    help="Path to embedding model for products",
+)
+@click.option(
+    "--embedder-vocab-path",
+    envvar="FLASK_SIMILARITY_SEARCH_EMBEDDER_VOCAB_PATH",
+    type=str,
+    help="Path to embedding model vocab json file",
+)
+@click.option(
+    "--forward-embedding-path",
+    envvar="FLASK_SIMILARITY_SEARCH_FORWARD_EMBEDDING_PATH",
+    type=str,
+    help="Path to embedding file (NPY) for database reactants",
+)
+@click.option(
+    "--retro-embedding-path",
+    envvar="FLASK_SIMILARITY_SEARCH_RETRO_EMBEDDING_PATH",
+    type=str,
+    help="Path to embedding file (NPY) for database products",
+)
 @click.pass_context
 def main(
     ctx,
