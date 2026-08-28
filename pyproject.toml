@@ -43,7 +43,7 @@ test = ["pytest", "pytest-asyncio", "pytest-mock", "responses", "httpx", "reques
 # Define a set of optional packages for use when deploying persistent data services
 pds = ["flask-tools[autogen,rdkit,chemprice]"]
 
-all = ["flask-tools[rdkit,flask,chemprop,chemprice,rag, molecular_minds]"]
+all = ["flask-tools[rdkit,flask,chemprop,chemprice,similarity_search,molecular_minds]"]
 
 #[tool.pytest]
 [tool.pytest.ini_options]
