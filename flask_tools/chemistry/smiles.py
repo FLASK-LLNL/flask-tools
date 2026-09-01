@@ -5,7 +5,7 @@
 ## SPDX-License-Identifier: Apache-2.0
 ################################################################################
 
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 from loguru import logger
 
 try:

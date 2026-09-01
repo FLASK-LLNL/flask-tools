@@ -6,7 +6,7 @@
 ################################################################################
 
 from loguru import logger
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 try:
     from rdkit import Chem
