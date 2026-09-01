@@ -6,7 +6,7 @@
 ###############################################################################
 
 import argparse
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP
 
 
 def add_server_arguments(parser: argparse.ArgumentParser) -> None:
