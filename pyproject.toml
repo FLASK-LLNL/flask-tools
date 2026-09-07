@@ -27,6 +27,9 @@ dependencies = [
 where = ["."]
 include = ["flask_tools*"]
 
+[tool.setuptools.package-data]
+"flask_tools.pipette" = ["assets/*", "data/*"]
+
 # This creates the console script
 [project.scripts]
 flask-tools-install = "flask_tools.install:main"
